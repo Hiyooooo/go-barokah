@@ -57,6 +57,10 @@ export async function loginService({ email, password }) {
         throw err;
     }
 
-    const token = signToken({ sub: account.id, email: account.email });
+    const token = signToken({
+        sub: account.id,
+        email: account.email,
+        role: account.role
+    });
     return { account: sanitizeUser(account), token };
 }

@@ -19,5 +19,26 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  addresses   Address[]
+
   @@map("users")
+}
+
+model Address {
+  id             Int      @id @default(autoincrement())
+  userId         String   @map("user_id") @db.Char(36)
+
+  label          String   @db.VarChar(100)
+  recipientName  String   @map("recipient_name") @db.VarChar(255)
+  recipientPhone String   @map("recipient_phone") @db.VarChar(20)
+  addressDetail  String   @map("address_detail") @db.Text
+  isDefault      Boolean  @default(false) @map("is_default")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("address")
 }

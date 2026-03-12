@@ -25,9 +25,16 @@ export function authRequired(req, res, next) {
             });
         }
 
+        if (!decoded.role) {
+            return res.status(401).json({
+                message: "Invalid token payload"
+            });
+        }
+
         req.user = {
             id: decoded.sub,
-            email: decoded.email || null
+            email: decoded.email || null,
+            role: decoded.role
         };
 
         next();
@@ -43,4 +50,30 @@ export function authRequired(req, res, next) {
         }
         return next(error);
     }
+}
+
+
+export function authorization(...allowedRoles) {
+    const normalizedRoles = allowedRoles.map((role) => String(role).toLowerCase());
+
+    return function (req, res, next) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    message: "Authentication required"
+                });
+            }
+
+            const userRole = String(req.user.role || "").toLowerCase();
+            if (!userRole || !normalizedRoles.includes(userRole)) {
+                return res.status(403).json({
+                    message: "Forbidden"
+                });
+            }
+
+            next();
+        } catch (error) {
+            return next(error);
+        }
+    };
 }
