@@ -26,7 +26,11 @@ function normalizeBoolean(value) {
 export async function getAllAdressController(req, res, next) {
     try {
         const address = await getAllAdressService(req.user.id)
-        res.status(200).json({
+
+        if (address.length === 0) {
+            res.status(200).json({ message: "You do not have an address yet" })
+        }
+        return res.status(200).json({
             message: "Successfull get all address",
             data: address
         })
@@ -95,7 +99,7 @@ export async function updateAddressController(req, res, next) {
             return res.status(400).json({ message: "Invalid address id" });
         }
 
-        const {label, recipient_name, recipient_phone, address_detail, is_default} = req.body
+        const { label, recipient_name, recipient_phone, address_detail, is_default } = req.body
         const parsedIsDefault = normalizeBoolean(is_default);
 
         if (is_default !== undefined && parsedIsDefault === undefined) {
@@ -103,7 +107,7 @@ export async function updateAddressController(req, res, next) {
         }
 
         if (recipient_phone !== undefined && !isValidPhone(recipient_phone)) {
-            return res.status(400).json({message: "Invalid phone number"})
+            return res.status(400).json({ message: "Invalid phone number" })
         }
 
         const data = {
