@@ -2,7 +2,7 @@ import express from "express";
 import authRoute from "./routes/auth.route.js";
 import addressRoute from "./routes/address.route.js"
 import otpRoute from "./routes/otp.route.js";
-import { authRequired } from "./middlewares/auth.midleware.js";
+import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
 const app = express();

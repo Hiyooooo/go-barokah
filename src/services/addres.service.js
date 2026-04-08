@@ -1,42 +1,129 @@
-import { createAdress, deleteAddress, findById, getAllAdress, updateAdress } from "../repositories/address.repository.js"
+import {
+  createAddress,
+  deleteAddress,
+  findByAddressId,
+  getAllAddress,
+  updateAddress,
+} from "../repositories/address.repository.js";
+
+function createBadRequestError(message) {
+  const err = new Error(message);
+  err.statusCode = 400;
+  return err;
+}
 
 function createNotFoundError() {
-    const err = new Error("Address not found");
-    err.statusCode = 404;
-    return err;
+  const err = new Error("Address not found");
+  err.statusCode = 404;
+  return err;
+}
+
+function isValidPhone(phone) {
+  const regex = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
+  return regex.test(phone);
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+
+  return undefined;
+}
+
+function parseAddressId(id) {
+  const parsed = Number(id);
+  if (Number.isNaN(parsed)) {
+    throw createBadRequestError("Invalid address id");
+  }
+
+  return parsed;
 }
 
 export async function getAllAdressService(userId) {
-    return await getAllAdress(userId);
+  return await getAllAddress(userId);
 }
 
 export async function getAddressByIdService(id, userId) {
-    const existing = await findById(id, userId);
-    if (!existing) {
-        throw createNotFoundError();
-    }
+  const parsedId = parseAddressId(id);
+  const existing = await findByAddressId(parsedId, userId);
+  if (!existing) {
+    throw createNotFoundError();
+  }
 
-    return existing;
+  return existing;
 }
 
-export async function createAddressService(data) {
-    return await createAdress(data);
+export async function createAddressService(userId, payload) {
+  const { label, recipient_name, recipient_phone, address_detail, is_default } =
+    payload;
+  const parsedIsDefault = normalizeBoolean(is_default);
+
+  if (!label || !recipient_name || !recipient_phone || !address_detail) {
+    throw createBadRequestError(
+      "Label, recipient name, recipient phone, and address detail are required"
+    );
+  }
+
+  if (is_default !== undefined && parsedIsDefault === undefined) {
+    throw createBadRequestError("is_default must be a boolean");
+  }
+
+  if (!isValidPhone(recipient_phone)) {
+    throw createBadRequestError("Invalid phone number");
+  }
+
+  const data = {
+    userId,
+    label,
+    recipient_name,
+    recipient_phone,
+    address_detail,
+    is_default: parsedIsDefault ?? false,
+  };
+
+  return await createAddress(data);
 }
 
-export async function updateAddressService(id, userId, data) {
-    const existing = await findById(id, userId);
-    if (!existing) {
-        throw createNotFoundError();
-    }
+export async function updateAddressService(id, userId, payload) {
+  const parsedId = parseAddressId(id);
+  const existing = await findByAddressId(parsedId, userId);
+  if (!existing) {
+    throw createNotFoundError();
+  }
 
-    return await updateAdress(id, userId, data);
+  const { label, recipient_name, recipient_phone, address_detail, is_default } =
+    payload;
+  const parsedIsDefault = normalizeBoolean(is_default);
+
+  if (is_default !== undefined && parsedIsDefault === undefined) {
+    throw createBadRequestError("is_default must be a boolean");
+  }
+
+  if (recipient_phone !== undefined && !isValidPhone(recipient_phone)) {
+    throw createBadRequestError("Invalid phone number");
+  }
+
+  const data = {
+    ...(label !== undefined && { label }),
+    ...(recipient_name !== undefined && { recipient_name }),
+    ...(recipient_phone !== undefined && { recipient_phone }),
+    ...(address_detail !== undefined && { address_detail }),
+    ...(parsedIsDefault !== undefined && { is_default: parsedIsDefault }),
+  };
+
+  return await updateAddress(parsedId, userId, data);
 }
 
 export async function deleteAddressService(id, userId) {
-    const existing = await findById(id, userId);
-    if (!existing) {
-        throw createNotFoundError();
-    }
+  const parsedId = parseAddressId(id);
+  const existing = await findByAddressId(parsedId, userId);
+  if (!existing) {
+    throw createNotFoundError();
+  }
 
-    return await deleteAddress(id);
+  return await deleteAddress(parsedId);
 }

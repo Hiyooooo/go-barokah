@@ -1,5 +1,5 @@
 import express from "express";
-import { authRequired } from "../middlewares/auth.midleware.js";
+import { authRequired } from "../middlewares/auth.middleware.js";
 import { requestEmailOtpController, verifyEmailOtpController } from "../controllers/otp.controller.js";
 
 const router = express.Router();
