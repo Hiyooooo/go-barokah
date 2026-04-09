@@ -60,3 +60,17 @@ model EmailOtp {
   @@index([userId])
   @@map("email_otp")
 }
+
+model Product {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(255)
+  price           Float
+  description     String   @db.Text
+  image_url       String   @db.VarChar(255)
+  stock           Int
+  discount_amount Int
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("products")
+}

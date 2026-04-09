@@ -2,6 +2,7 @@ import express from "express";
 import authRoute from "./routes/auth.route.js";
 import addressRoute from "./routes/address.route.js"
 import otpRoute from "./routes/otp.route.js";
+import productRoute from "./routes/product.route.js";
 import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
@@ -14,6 +15,7 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoute);
 app.use("/auth", otpRoute);
 app.use("/address", addressRoute)
+app.use("/products", productRoute);
 
 app.get("/me", authRequired, (req, res) => {
     res.json({ message: "Protected route", user: req.user });

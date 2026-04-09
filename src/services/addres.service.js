@@ -1,7 +1,7 @@
 import {
   createAddress,
   deleteAddress,
-  findByAddressId,
+  findAddressById,
   getAllAddress,
   updateAddress,
 } from "../repositories/address.repository.js";
@@ -49,7 +49,7 @@ export async function getAllAdressService(userId) {
 
 export async function getAddressByIdService(id, userId) {
   const parsedId = parseAddressId(id);
-  const existing = await findByAddressId(parsedId, userId);
+  const existing = await findAddressById(parsedId, userId);
   if (!existing) {
     throw createNotFoundError();
   }
@@ -64,7 +64,7 @@ export async function createAddressService(userId, payload) {
 
   if (!label || !recipient_name || !recipient_phone || !address_detail) {
     throw createBadRequestError(
-      "Label, recipient name, recipient phone, and address detail are required"
+      "Label, recipient name, recipient phone, and address detail are required",
     );
   }
 
@@ -90,7 +90,7 @@ export async function createAddressService(userId, payload) {
 
 export async function updateAddressService(id, userId, payload) {
   const parsedId = parseAddressId(id);
-  const existing = await findByAddressId(parsedId, userId);
+  const existing = await findAddressById(parsedId, userId);
   if (!existing) {
     throw createNotFoundError();
   }
@@ -120,7 +120,7 @@ export async function updateAddressService(id, userId, payload) {
 
 export async function deleteAddressService(id, userId) {
   const parsedId = parseAddressId(id);
-  const existing = await findByAddressId(parsedId, userId);
+  const existing = await findAddressById(parsedId, userId);
   if (!existing) {
     throw createNotFoundError();
   }
