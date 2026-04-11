@@ -112,7 +112,11 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
 }
 
 export async function getAllProductsService() {
-  return await getAllProducts();
+  const products = await getAllProducts();
+  return products.map((product) => ({
+    ...product,
+    final_price: calculateFinalPrice(product.price, product.discount_amount),
+  }));
 }
 
 export async function getProductByIdService(id) {
@@ -123,7 +127,11 @@ export async function getProductByIdService(id) {
     throw createNotFoundError();
   }
 
-  return existing;
+  const final_price = calculateFinalPrice(
+    existing.price,
+    existing.discount_amount,
+  );
+  return { ...existing, final_price };
 }
 
 export async function createProductService(payload) {
@@ -141,7 +149,10 @@ export async function createProductService(payload) {
     discount_amount: discount_amount ?? 0,
   };
 
-  return await createProduct(data);
+  const result = await createProduct(data);
+  const final_price = calculateFinalPrice(result.price, result.discount_amount);
+
+  return { ...result, final_price };
 }
 
 export async function updateProductService(id, payload) {
@@ -166,7 +177,10 @@ export async function updateProductService(id, payload) {
     ...(discount_amount !== undefined && { discount_amount }),
   };
 
-  return await updateProduct(parsedId, data);
+  const result = await updateProduct(parsedId, data);
+  const final_price = calculateFinalPrice(result.price, result.discount_amount);
+
+  return { ...result, final_price };
 }
 
 export async function deleteProductService(id) {
