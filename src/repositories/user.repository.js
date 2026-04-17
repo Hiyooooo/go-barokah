@@ -38,6 +38,16 @@ export async function createAccount({
   });
 }
 
+export async function updateAccount(userId, data) {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: data.username,
+      phoneNumber: data.phone_number,
+    },
+  });
+}
+
 export async function verifiedEmail(userId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

@@ -14,7 +14,6 @@ model User {
   password    String   @db.VarChar(255)
   role        String   @db.VarChar(100)
   phoneNumber String?  @map("phone_number") @db.VarChar(20)
-  imageUrl    String?  @map("image_url") @db.VarChar(255)
   emailVerified Boolean @default(false) @map("email_verified")
 
   createdAt   DateTime @default(now()) @map("created_at")
