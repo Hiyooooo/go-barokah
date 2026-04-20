@@ -7,18 +7,14 @@ import {
 } from "../repositories/otp.repository.js";
 import {
   findUserById,
+  findUserByEmail,
   markEmailVerified,
   verifiedEmail,
 } from "../repositories/user.repository.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 
-export async function requestEmailOtp(userId) {
-  const existingUser = await findUserById(userId);
-  if (!existingUser) {
-    const err = new Error("User not found");
-    err.statusCode = 404;
-    throw err;
-  }
+async function sendEmailOtp(existingUser) {
+  const userId = existingUser.id;
 
   const isEmailVerified = await verifiedEmail(userId);
   if (isEmailVerified) {
@@ -52,7 +48,7 @@ export async function requestEmailOtp(userId) {
   };
 }
 
-export async function verifyEmailOtp(userId, otpInput) {
+export async function requestEmailOtpByUserId(userId) {
   const existingUser = await findUserById(userId);
   if (!existingUser) {
     const err = new Error("User not found");
@@ -60,6 +56,43 @@ export async function verifyEmailOtp(userId, otpInput) {
     throw err;
   }
 
+  return await sendEmailOtp(existingUser);
+}
+
+export async function requestEmailOtpByEmail(email) {
+  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    const err = new Error("Email is required");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const existingUser = await findUserByEmail(normalizedEmail);
+  if (!existingUser) {
+    const err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return await sendEmailOtp(existingUser);
+}
+
+export async function verifyEmailOtpByEmail(email, otpInput) {
+  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    const err = new Error("Email is required");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const existingUser = await findUserByEmail(normalizedEmail);
+  if (!existingUser) {
+    const err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const userId = existingUser.id;
   const isEmailVerified = await verifiedEmail(userId);
   if (isEmailVerified) {
     const err = new Error("User already verified");

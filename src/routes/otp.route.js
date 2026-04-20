@@ -1,10 +1,12 @@
 import express from "express";
-import { authRequired } from "../middlewares/auth.middleware.js";
-import { requestEmailOtpController, verifyEmailOtpController } from "../controllers/otp.controller.js";
+import {
+  requestEmailOtpController,
+  verifyEmailOtpController,
+} from "../controllers/otp.controller.js";
 
 const router = express.Router();
 
-router.post("/email/otp/request", authRequired, requestEmailOtpController);
-router.post("/email/otp/verify", authRequired, verifyEmailOtpController);
+router.post("/request", requestEmailOtpController);
+router.post("/verify", verifyEmailOtpController);
 
 export default router;

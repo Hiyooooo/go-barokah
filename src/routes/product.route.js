@@ -10,7 +10,6 @@ import { authRequired, authorization } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// TODO: tentukan rule akses (public vs admin)
 router.get("/", getAllProductsController);
 router.get("/:id", getProductByIdController);
 

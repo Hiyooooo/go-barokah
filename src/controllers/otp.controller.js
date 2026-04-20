@@ -1,10 +1,18 @@
-import { requestEmailOtp, verifyEmailOtp } from "../services/otp.service.js";
+import {
+  requestEmailOtpByEmail,
+  verifyEmailOtpByEmail,
+} from "../services/otp.service.js";
 
 export async function requestEmailOtpController(req, res, next) {
   try {
-    const userId = req.user.id;
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+      });
+    }
 
-    await requestEmailOtp(userId);
+    await requestEmailOtpByEmail(email);
 
     return res.status(200).json({
       message: "Email OTP sent successfully",
@@ -16,15 +24,13 @@ export async function requestEmailOtpController(req, res, next) {
 
 export async function verifyEmailOtpController(req, res, next) {
   try {
-    const userId = req.user.id;
-
-    const { otp } = req.body;
-    if (!otp) {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
       return res.status(400).json({
-        message: "OTP is required",
+        message: "Email and OTP are required",
       });
     }
-    await verifyEmailOtp(userId, otp);
+    await verifyEmailOtpByEmail(email, otp);
 
     return res.status(200).json({
       message: "Verify OTP successfully",

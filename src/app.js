@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Ok" });
 });
 app.use("/api/auth", authRoute);
-app.use("/api/auth", otpRoute);
+app.use("/api/otp", otpRoute);
 app.use("/api/users/address", addressRoute);
 app.use("/api/products", productRoute);
 app.use("/api/users", userRoute);
