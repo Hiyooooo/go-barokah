@@ -5,42 +5,17 @@ import {
   getAllProducts,
   updateProduct,
 } from "../repositories/product.repository.js";
-
-function createBadRequestError(message) {
-  const err = new Error(message);
-  err.statusCode = 400;
-  return err;
-}
-
-function createNotFoundError() {
-  const err = new Error("Product not found");
-  err.statusCode = 404;
-  return err;
-}
+import {
+  badRequest,
+  isNonEmptyString,
+  isValidNumber,
+  isValidUrl,
+  notFound,
+  parsePositiveInt,
+} from "../utils/index.js";
 
 function parseProductId(id) {
-  const parsed = Number(id);
-  if (Number.isNaN(parsed)) {
-    throw createBadRequestError("Invalid product id");
-  }
-  return parsed;
-}
-
-function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim() !== "";
-}
-
-function isValidNumber(value) {
-  return typeof value === "number" && !Number.isNaN(value);
-}
-
-function validateURL(url) {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
+  return parsePositiveInt(id, "product id");
 }
 
 function calculateFinalPrice(price, discount) {
@@ -57,44 +32,44 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
 
     for (const [key, value] of Object.entries(requiredFields)) {
       if (value === undefined) {
-        throw createBadRequestError(`${key} is required`);
+        throw badRequest(`${key} is required`);
       }
     }
   }
 
   if (name !== undefined) {
     if (!isNonEmptyString(name)) {
-      throw createBadRequestError("Name must be a non-empty string");
+      throw badRequest("Name must be a non-empty string");
     }
   }
 
   if (description !== undefined) {
     if (!isNonEmptyString(description)) {
-      throw createBadRequestError("Description must be a non-empty string");
+      throw badRequest("Description must be a non-empty string");
     }
   }
 
   if (image_url !== undefined) {
-    if (!isNonEmptyString(image_url) || !validateURL(image_url)) {
-      throw createBadRequestError("Invalid image URL");
+    if (!isNonEmptyString(image_url) || !isValidUrl(image_url)) {
+      throw badRequest("Invalid image URL");
     }
   }
 
   if (price !== undefined) {
     if (!isValidNumber(price) || price < 0) {
-      throw createBadRequestError("Price must be a number >= 0");
+      throw badRequest("Price must be a number >= 0");
     }
   }
 
   if (stock !== undefined) {
     if (!isValidNumber(stock) || stock < 0) {
-      throw createBadRequestError("Stock must be a number >= 0");
+      throw badRequest("Stock must be a number >= 0");
     }
   }
 
   if (discount_amount !== undefined) {
     if (!isValidNumber(discount_amount) || discount_amount < 0) {
-      throw createBadRequestError("Discount must be a number >= 0");
+      throw badRequest("Discount must be a number >= 0");
     }
   }
 
@@ -104,9 +79,7 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
       discount_amount < 0 ||
       discount_amount > 100
     ) {
-      throw createBadRequestError(
-        "Discount must be a number between 0 and 100",
-      );
+      throw badRequest("Discount must be a number between 0 and 100");
     }
   }
 }
@@ -124,7 +97,7 @@ export async function getProductByIdService(id) {
   const existing = await findProductById(parsedId);
 
   if (!existing) {
-    throw createNotFoundError();
+    throw notFound("Product not found");
   }
 
   const final_price = calculateFinalPrice(
@@ -160,7 +133,7 @@ export async function updateProductService(id, payload) {
 
   const existing = await findProductById(parsedId);
   if (!existing) {
-    throw createNotFoundError();
+    throw notFound("Product not found");
   }
 
   validateProductPayload(payload, { isUpdate: true });
@@ -188,7 +161,7 @@ export async function deleteProductService(id) {
 
   const existing = await findProductById(parsedId);
   if (!existing) {
-    throw createNotFoundError();
+    throw notFound("Product not found");
   }
 
   return await deleteProduct(parsedId);

@@ -6,22 +6,12 @@ import {
   updateAddress,
 } from "../repositories/address.repository.js";
 
-function createBadRequestError(message) {
-  const err = new Error(message);
-  err.statusCode = 400;
-  return err;
-}
-
-function createNotFoundError() {
-  const err = new Error("Address not found");
-  err.statusCode = 404;
-  return err;
-}
-
-function isValidPhone(phone) {
-  const regex = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
-  return regex.test(phone);
-}
+import {
+  badRequest,
+  isValidPhone,
+  notFound,
+  parsePositiveInt,
+} from "../utils/index.js";
 
 function normalizeBoolean(value) {
   if (typeof value === "boolean") return value;
@@ -35,12 +25,7 @@ function normalizeBoolean(value) {
 }
 
 function parseAddressId(id) {
-  const parsed = Number(id);
-  if (Number.isNaN(parsed)) {
-    throw createBadRequestError("Invalid address id");
-  }
-
-  return parsed;
+  return parsePositiveInt(id, "address id");
 }
 
 export async function getAllAdressService(userId) {
@@ -51,7 +36,7 @@ export async function getAddressByIdService(id, userId) {
   const parsedId = parseAddressId(id);
   const existing = await findAddressById(parsedId, userId);
   if (!existing) {
-    throw createNotFoundError();
+    throw notFound("Product not found");
   }
 
   return existing;
@@ -63,17 +48,17 @@ export async function createAddressService(userId, payload) {
   const parsedIsDefault = normalizeBoolean(is_default);
 
   if (!label || !recipient_name || !recipient_phone || !address_detail) {
-    throw createBadRequestError(
+    throw badRequest(
       "Label, recipient name, recipient phone, and address detail are required",
     );
   }
 
   if (is_default !== undefined && parsedIsDefault === undefined) {
-    throw createBadRequestError("is_default must be a boolean");
+    throw badRequest("is_default must be boolean");
   }
 
   if (!isValidPhone(recipient_phone)) {
-    throw createBadRequestError("Invalid phone number");
+    throw badRequest("Invalid phone number format");
   }
 
   const data = {
@@ -92,7 +77,7 @@ export async function updateAddressService(id, userId, payload) {
   const parsedId = parseAddressId(id);
   const existing = await findAddressById(parsedId, userId);
   if (!existing) {
-    throw createNotFoundError();
+    throw notFound("Address not found");
   }
 
   const { label, recipient_name, recipient_phone, address_detail, is_default } =
@@ -100,11 +85,11 @@ export async function updateAddressService(id, userId, payload) {
   const parsedIsDefault = normalizeBoolean(is_default);
 
   if (is_default !== undefined && parsedIsDefault === undefined) {
-    throw createBadRequestError("is_default must be a boolean");
+    throw badRequest("is_default must be boolean");
   }
 
   if (recipient_phone !== undefined && !isValidPhone(recipient_phone)) {
-    throw createBadRequestError("Invalid phone number");
+    throw badRequest("Invalid phone number format");
   }
 
   const data = {
@@ -122,7 +107,7 @@ export async function deleteAddressService(id, userId) {
   const parsedId = parseAddressId(id);
   const existing = await findAddressById(parsedId, userId);
   if (!existing) {
-    throw createNotFoundError();
+    throw notFound("Address not found");
   }
 
   return await deleteAddress(parsedId);

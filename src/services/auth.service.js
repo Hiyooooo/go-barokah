@@ -7,20 +7,7 @@ import { requestEmailOtpByUserId } from "./otp.service.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { signToken } from "../utils/jwt.js";
 
-function createBadRequestError(message) {
-  const err = new Error(message);
-  err.statusCode = 400;
-  return err;
-}
-
-function isEmail(str) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
-}
-
-function isValidPhone(phone) {
-  const regex = /^(\+62|62|0)8[1-9][0-9]{6,10}$/;
-  return regex.test(phone);
-}
+import { badRequest, isEmail } from "../utils/index.js";
 
 export function sanitizeUser(account) {
   return {
@@ -42,32 +29,32 @@ export async function registerService({
   phone_number,
   image_url,
 }) {
-  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  const normalizedEmail = String(email ?? "")
+    .trim()
+    .toLowerCase();
 
   if (!email || !password || !username) {
-    throw createBadRequestError(
-      "Email, password, and username are required"
-    );
+    throw badRequest("Email, password, and username are required");
   }
   if (!isEmail(normalizedEmail)) {
-    throw createBadRequestError("Invalid email format");
+    throw badRequest("Invalid email format");
   }
   if (password.length < 6) {
-    throw createBadRequestError("Password must be at least 6 characters");
+    throw badRequest("Password must be at least 6 characters");
   }
   if (phone_number && !isValidPhone(phone_number)) {
-    throw createBadRequestError("Invalid phone number format");
+    throw badRequest("Invalid phone number format");
   }
 
   const existingEmail = await findUserByEmail(normalizedEmail);
   if (existingEmail) {
-    throw createBadRequestError("Email already taken");
+    throw badRequest("Email already taken");
   }
 
   if (phone_number) {
     const existingPhone = await findUserByPhone(phone_number);
     if (existingPhone) {
-      throw createBadRequestError("Phone number already taken");
+      throw badRequest("Phone number already taken");
     }
   }
 
@@ -91,24 +78,24 @@ export async function registerService({
 
 export async function loginService({ email, password }) {
   if (!email || !password) {
-    throw createBadRequestError("Invalid username or password");
+    throw badRequest("Invalid username or password");
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
 
   const account = await findUserByEmail(normalizedEmail);
   if (!account) {
-    throw createBadRequestError("Invalid username or password");
+    throw badRequest("Invalid username or password");
   }
 
   const ok = await comparePassword(password, account.password);
   if (!ok) {
-    throw createBadRequestError("Invalid username or password");
+    throw badRequest("Invalid username or password");
   }
 
   if (!account.emailVerified) {
-    throw createBadRequestError(
-      "Email belum terverifikasi. Silakan verifikasi OTP terlebih dahulu"
+    throw badRequest(
+      "Email belum terverifikasi. Silakan verifikasi OTP terlebih dahulu",
     );
   }
 

@@ -13,14 +13,14 @@ import {
 } from "../repositories/user.repository.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 
+import { badRequest, notFound } from "../utils/index.js";
+
 async function sendEmailOtp(existingUser) {
   const userId = existingUser.id;
 
   const isEmailVerified = await verifiedEmail(userId);
   if (isEmailVerified) {
-    const err = new Error("Email already verified");
-    err.statusCode = 400;
-    throw err;
+    throw badRequest("Email already verified");
   }
 
   const plainOtp = crypto.randomInt(100000, 1000000).toString();
@@ -51,78 +51,64 @@ async function sendEmailOtp(existingUser) {
 export async function requestEmailOtpByUserId(userId) {
   const existingUser = await findUserById(userId);
   if (!existingUser) {
-    const err = new Error("User not found");
-    err.statusCode = 404;
-    throw err;
+    throw notFound("User not found");
   }
 
   return await sendEmailOtp(existingUser);
 }
 
 export async function requestEmailOtpByEmail(email) {
-  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  const normalizedEmail = String(email ?? "")
+    .trim()
+    .toLowerCase();
   if (!normalizedEmail) {
-    const err = new Error("Email is required");
-    err.statusCode = 400;
-    throw err;
+    throw badRequest("Email is required");
   }
 
   const existingUser = await findUserByEmail(normalizedEmail);
   if (!existingUser) {
-    const err = new Error("User not found");
-    err.statusCode = 404;
-    throw err;
+    throw notFound("User not found");
   }
 
   return await sendEmailOtp(existingUser);
 }
 
 export async function verifyEmailOtpByEmail(email, otpInput) {
-  const normalizedEmail = String(email ?? "").trim().toLowerCase();
+  const normalizedEmail = String(email ?? "")
+    .trim()
+    .toLowerCase();
   if (!normalizedEmail) {
-    const err = new Error("Email is required");
-    err.statusCode = 400;
-    throw err;
+    throw badRequest("Email is required");
   }
 
   const existingUser = await findUserByEmail(normalizedEmail);
   if (!existingUser) {
-    const err = new Error("User not found");
-    err.statusCode = 404;
-    throw err;
+    throw notFound("User not found");
   }
 
   const userId = existingUser.id;
   const isEmailVerified = await verifiedEmail(userId);
   if (isEmailVerified) {
-    const err = new Error("User already verified");
-    err.statusCode = 400;
-    throw err;
+    throw badRequest("User already verified");
   }
 
   const activeOtp = await findActiveOtpByUserId(userId);
 
   if (!activeOtp) {
-    const err = new Error("Active OTP not found");
-    err.statusCode = 404;
-    throw err;
+    throw notFound("Active OTP not found");
   }
 
   if (new Date() > new Date(activeOtp.expiresAt)) {
     await invalidateOtp(activeOtp.id);
 
-    const err = new Error("OTP expired");
-    err.statusCode = 400;
-    throw err;
+    throw badRequest("OTP expired");
   }
 
   const otp = String(otpInput).trim();
 
   const isMatch = await bcrypt.compare(otp, activeOtp.otpHash);
   if (!isMatch) {
-    const err = new Error("Invalid OTP");
-    err.statusCode = 400;
-    throw err;
+    throw badRequest("Invalid OTP");
   }
 
   await markEmailVerified(userId);
