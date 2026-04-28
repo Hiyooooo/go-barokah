@@ -18,17 +18,37 @@ function parseProductId(id) {
   return parsePositiveInt(id, "product id");
 }
 
+function parseRelationId(id, fieldName) {
+  return parsePositiveInt(id, fieldName);
+}
+
 function calculateFinalPrice(price, discount) {
   const final = price - (price * discount) / 100;
   return Math.round(final);
 }
 
 function validateProductPayload(payload, { isUpdate = false } = {}) {
-  const { name, price, description, image_url, stock, discount_amount } =
-    payload;
+  const {
+    name,
+    price,
+    description,
+    category_id,
+    type_id,
+    image_url,
+    stock,
+    discount_amount,
+  } = payload;
 
   if (!isUpdate) {
-    const requiredFields = { name, price, description, image_url, stock };
+    const requiredFields = {
+      name,
+      price,
+      description,
+      category_id,
+      type_id,
+      image_url,
+      stock,
+    };
 
     for (const [key, value] of Object.entries(requiredFields)) {
       if (value === undefined) {
@@ -47,6 +67,14 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     if (!isNonEmptyString(description)) {
       throw badRequest("Description must be a non-empty string");
     }
+  }
+
+  if (category_id !== undefined) {
+    parseRelationId(category_id, "category_id");
+  }
+
+  if (type_id !== undefined) {
+    parseRelationId(type_id, "type_id");
   }
 
   if (image_url !== undefined) {
@@ -110,13 +138,23 @@ export async function getProductByIdService(id) {
 export async function createProductService(payload) {
   validateProductPayload(payload, { isUpdate: false });
 
-  const { name, price, description, image_url, stock, discount_amount } =
-    payload;
+  const {
+    name,
+    price,
+    description,
+    category_id,
+    type_id,
+    image_url,
+    stock,
+    discount_amount,
+  } = payload;
 
   const data = {
     name,
     price,
     description,
+    category_id: parseRelationId(category_id, "category_id"),
+    type_id: parseRelationId(type_id, "type_id"),
     image_url,
     stock,
     discount_amount: discount_amount ?? 0,
@@ -138,13 +176,27 @@ export async function updateProductService(id, payload) {
 
   validateProductPayload(payload, { isUpdate: true });
 
-  const { name, price, description, image_url, stock, discount_amount } =
-    payload;
+  const {
+    name,
+    price,
+    description,
+    category_id,
+    type_id,
+    image_url,
+    stock,
+    discount_amount,
+  } = payload;
 
   const data = {
     ...(name !== undefined && { name }),
     ...(price !== undefined && { price }),
     ...(description !== undefined && { description }),
+    ...(category_id !== undefined && {
+      category_id: parseRelationId(category_id, "category_id"),
+    }),
+    ...(type_id !== undefined && {
+      type_id: parseRelationId(type_id, "type_id"),
+    }),
     ...(image_url !== undefined && { image_url }),
     ...(stock !== undefined && { stock }),
     ...(discount_amount !== undefined && { discount_amount }),

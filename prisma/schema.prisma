@@ -63,6 +63,8 @@ model EmailOtp {
 model Product {
   id              Int      @id @default(autoincrement())
   name            String   @db.VarChar(255)
+  categoryId      Int      @map("category_id")
+  typeId          Int      @map("type_id")
   price           Float
   description     String   @db.Text
   image_url       String   @db.VarChar(255)
@@ -71,5 +73,32 @@ model Product {
   created_at      DateTime @default(now()) @db.Timestamp(0)
   updated_at      DateTime @updatedAt @db.Timestamp(0)
 
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  type            Type @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+  @@index([typeId])
   @@map("products")
+}
+
+model Category {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @updatedAt @db.Timestamp(0)
+
+  products   Product[]
+
+  @@map("categories")
+}
+
+model Type{
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @updatedAt @db.Timestamp(0)
+
+  products   Product[]
+
+  @@map("types")
 }
