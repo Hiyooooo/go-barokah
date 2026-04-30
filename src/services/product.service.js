@@ -5,6 +5,8 @@ import {
   getAllProducts,
   updateProduct,
 } from "../repositories/product.repository.js";
+import { findCategoryById } from "../repositories/category.repository.js";
+import { findTypeById } from "../repositories/type.repository.js";
 import {
   badRequest,
   isNonEmptyString,
@@ -25,6 +27,28 @@ function parseRelationId(id, fieldName) {
 function calculateFinalPrice(price, discount) {
   const final = price - (price * discount) / 100;
   return Math.round(final);
+}
+
+async function ensureProductRelationsExist({ category_id, type_id }) {
+  const [category, type] = await Promise.all([
+    category_id !== undefined ? findCategoryById(category_id) : null,
+    type_id !== undefined ? findTypeById(type_id) : null,
+  ]);
+
+  const categoryNotFound = category_id !== undefined && !category;
+  const typeNotFound = type_id !== undefined && !type;
+
+  if (categoryNotFound && typeNotFound) {
+    throw notFound("Category and type not found");
+  }
+
+  if (categoryNotFound) {
+    throw notFound("Category not found");
+  }
+
+  if (typeNotFound) {
+    throw notFound("Type not found");
+  }
 }
 
 function validateProductPayload(payload, { isUpdate = false } = {}) {
@@ -148,13 +172,20 @@ export async function createProductService(payload) {
     stock,
     discount_amount,
   } = payload;
+  const parsedCategoryId = parseRelationId(category_id, "category_id");
+  const parsedTypeId = parseRelationId(type_id, "type_id");
+
+  await ensureProductRelationsExist({
+    category_id: parsedCategoryId,
+    type_id: parsedTypeId,
+  });
 
   const data = {
     name,
     price,
     description,
-    category_id: parseRelationId(category_id, "category_id"),
-    type_id: parseRelationId(type_id, "type_id"),
+    category_id: parsedCategoryId,
+    type_id: parsedTypeId,
     image_url,
     stock,
     discount_amount: discount_amount ?? 0,
@@ -201,6 +232,8 @@ export async function updateProductService(id, payload) {
     ...(stock !== undefined && { stock }),
     ...(discount_amount !== undefined && { discount_amount }),
   };
+
+  await ensureProductRelationsExist(data);
 
   const result = await updateProduct(parsedId, data);
   const final_price = calculateFinalPrice(result.price, result.discount_amount);
