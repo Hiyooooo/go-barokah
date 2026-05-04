@@ -2,6 +2,14 @@ export function isNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== "";
 }
 
+export function isEmptyValue(value) {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  );
+}
+
 export function isValidNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -37,6 +45,10 @@ export function isValidUrl(value) {
   } catch {
     return false;
   }
+}
+
+export function isLocalUploadPath(value, uploadPath) {
+  return isNonEmptyString(value) && value.startsWith(`${uploadPath}/`);
 }
 
 export function isNumberInRange(value, min, max) {

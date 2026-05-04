@@ -9,10 +9,13 @@ import { findCategoryById } from "../repositories/category.repository.js";
 import { findTypeById } from "../repositories/type.repository.js";
 import {
   badRequest,
+  isEmptyValue,
+  isLocalUploadPath,
   isNonEmptyString,
-  isValidNumber,
-  isValidUrl,
   notFound,
+  parseIntegerInRange,
+  parseNonNegativeInteger,
+  parseNonNegativeNumber,
   parsePositiveInt,
 } from "../utils/index.js";
 
@@ -62,6 +65,7 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     stock,
     discount_amount,
   } = payload;
+  const data = {};
 
   if (!isUpdate) {
     const requiredFields = {
@@ -75,7 +79,7 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     };
 
     for (const [key, value] of Object.entries(requiredFields)) {
-      if (value === undefined) {
+      if (isEmptyValue(value)) {
         throw badRequest(`${key} is required`);
       }
     }
@@ -85,55 +89,52 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     if (!isNonEmptyString(name)) {
       throw badRequest("Name must be a non-empty string");
     }
+
+    data.name = name;
   }
 
   if (description !== undefined) {
     if (!isNonEmptyString(description)) {
       throw badRequest("Description must be a non-empty string");
     }
+
+    data.description = description;
   }
 
   if (category_id !== undefined) {
-    parseRelationId(category_id, "category_id");
+    data.category_id = parseRelationId(category_id, "category_id");
   }
 
   if (type_id !== undefined) {
-    parseRelationId(type_id, "type_id");
+    data.type_id = parseRelationId(type_id, "type_id");
   }
 
   if (image_url !== undefined) {
-    if (!isNonEmptyString(image_url) || !isValidUrl(image_url)) {
-      throw badRequest("Invalid image URL");
+    if (!isLocalUploadPath(image_url, "/uploads/products")) {
+      throw badRequest("Product image is required");
     }
+
+    data.image_url = image_url;
   }
 
   if (price !== undefined) {
-    if (!isValidNumber(price) || price < 0) {
-      throw badRequest("Price must be a number >= 0");
-    }
+    data.price = parseNonNegativeNumber(price, "price");
   }
 
   if (stock !== undefined) {
-    if (!isValidNumber(stock) || stock < 0) {
-      throw badRequest("Stock must be a number >= 0");
-    }
+    data.stock = parseNonNegativeInteger(stock, "stock");
   }
 
-  if (discount_amount !== undefined) {
-    if (!isValidNumber(discount_amount) || discount_amount < 0) {
-      throw badRequest("Discount must be a number >= 0");
-    }
+  if (!isEmptyValue(discount_amount)) {
+    data.discount_amount = parseIntegerInRange(
+      discount_amount,
+      "discount_amount",
+      0,
+      100,
+    );
   }
 
-  if (discount_amount !== undefined) {
-    if (
-      !isValidNumber(discount_amount) ||
-      discount_amount < 0 ||
-      discount_amount > 100
-    ) {
-      throw badRequest("Discount must be a number between 0 and 100");
-    }
-  }
+  return data;
 }
 
 export async function getAllProductsService() {
@@ -160,38 +161,17 @@ export async function getProductByIdService(id) {
 }
 
 export async function createProductService(payload) {
-  validateProductPayload(payload, { isUpdate: false });
-
-  const {
-    name,
-    price,
-    description,
-    category_id,
-    type_id,
-    image_url,
-    stock,
-    discount_amount,
-  } = payload;
-  const parsedCategoryId = parseRelationId(category_id, "category_id");
-  const parsedTypeId = parseRelationId(type_id, "type_id");
+  const data = validateProductPayload(payload, { isUpdate: false });
 
   await ensureProductRelationsExist({
-    category_id: parsedCategoryId,
-    type_id: parsedTypeId,
+    category_id: data.category_id,
+    type_id: data.type_id,
   });
 
-  const data = {
-    name,
-    price,
-    description,
-    category_id: parsedCategoryId,
-    type_id: parsedTypeId,
-    image_url,
-    stock,
-    discount_amount: discount_amount ?? 0,
-  };
-
-  const result = await createProduct(data);
+  const result = await createProduct({
+    ...data,
+    discount_amount: data.discount_amount ?? 0,
+  });
   const final_price = calculateFinalPrice(result.price, result.discount_amount);
 
   return { ...result, final_price };
@@ -205,33 +185,7 @@ export async function updateProductService(id, payload) {
     throw notFound("Product not found");
   }
 
-  validateProductPayload(payload, { isUpdate: true });
-
-  const {
-    name,
-    price,
-    description,
-    category_id,
-    type_id,
-    image_url,
-    stock,
-    discount_amount,
-  } = payload;
-
-  const data = {
-    ...(name !== undefined && { name }),
-    ...(price !== undefined && { price }),
-    ...(description !== undefined && { description }),
-    ...(category_id !== undefined && {
-      category_id: parseRelationId(category_id, "category_id"),
-    }),
-    ...(type_id !== undefined && {
-      type_id: parseRelationId(type_id, "type_id"),
-    }),
-    ...(image_url !== undefined && { image_url }),
-    ...(stock !== undefined && { stock }),
-    ...(discount_amount !== undefined && { discount_amount }),
-  };
+  const data = validateProductPayload(payload, { isUpdate: true });
 
   await ensureProductRelationsExist(data);
 

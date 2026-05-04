@@ -5,6 +5,11 @@ import {
   getProductByIdService,
   updateProductService,
 } from "../services/product.service.js";
+import { badRequest } from "../utils/index.js";
+
+function createImageUrl(file) {
+  return `/uploads/products/${file.filename}`;
+}
 
 export async function getAllProductsController(req, res, next) {
   try {
@@ -32,7 +37,17 @@ export async function getProductByIdController(req, res, next) {
 
 export async function createProductController(req, res, next) {
   try {
-    const result = await createProductService(req.body);
+    if (!req.file) {
+      throw badRequest("Product image is required");
+    }
+
+    const { image_url, ...productData } = req.body;
+    const payload = {
+      ...productData,
+      image_url: createImageUrl(req.file),
+    };
+
+    const result = await createProductService(payload);
     return res.status(201).json({
       message: "Success create product",
       data: result,
@@ -44,7 +59,15 @@ export async function createProductController(req, res, next) {
 
 export async function updateProductController(req, res, next) {
   try {
-    const result = await updateProductService(req.params.id, req.body);
+    const { image_url, ...productData } = req.body;
+    const payload = {
+      ...productData,
+    };
+    if (req.file) {
+      payload.image_url = createImageUrl(req.file);
+    }
+
+    const result = await updateProductService(req.params.id, payload);
     return res.status(200).json({
       message: "Success update product",
       data: result,
