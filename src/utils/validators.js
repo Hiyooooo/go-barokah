@@ -48,7 +48,19 @@ export function isValidUrl(value) {
 }
 
 export function isLocalUploadPath(value, uploadPath) {
-  return isNonEmptyString(value) && value.startsWith(`${uploadPath}/`);
+  if (!isNonEmptyString(value)) {
+    return false;
+  }
+
+  const prefix = `${uploadPath}/`;
+
+  if (!value.startsWith(prefix)) {
+    return false;
+  }
+
+  const fileName = value.slice(prefix.length);
+
+  return fileName !== "" && !fileName.includes("/") && !fileName.includes("\\");
 }
 
 export function isNumberInRange(value, min, max) {

@@ -9,6 +9,7 @@ import { findCategoryById } from "../repositories/category.repository.js";
 import { findTypeById } from "../repositories/type.repository.js";
 import {
   badRequest,
+  deletelocalUploadFile,
   isEmptyValue,
   isLocalUploadPath,
   isNonEmptyString,
@@ -190,6 +191,11 @@ export async function updateProductService(id, payload) {
   await ensureProductRelationsExist(data);
 
   const result = await updateProduct(parsedId, data);
+
+  if (data.image_url !== undefined && data.image_url !== existing.image_url) {
+    await deletelocalUploadFile(existing.image_url);
+  }
+
   const final_price = calculateFinalPrice(result.price, result.discount_amount);
 
   return { ...result, final_price };
@@ -203,5 +209,9 @@ export async function deleteProductService(id) {
     throw notFound("Product not found");
   }
 
-  return await deleteProduct(parsedId);
+  const deleted = await deleteProduct(parsedId);
+
+  await deletelocalUploadFile(existing.image_url);
+
+  return deleted;
 }
