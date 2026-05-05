@@ -6,7 +6,7 @@ import {
   getAllTypeController,
   getTypeByIdController,
   updateTypeController,
-} from "../controllers/type.constroller.js";
+} from "../controllers/type.controller.js";
 
 const router = express.Router();
 

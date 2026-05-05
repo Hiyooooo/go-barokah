@@ -2,6 +2,14 @@ export function isNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== "";
 }
 
+export function isEmptyValue(value) {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  );
+}
+
 export function isValidNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -37,6 +45,22 @@ export function isValidUrl(value) {
   } catch {
     return false;
   }
+}
+
+export function isLocalUploadPath(value, uploadPath) {
+  if (!isNonEmptyString(value)) {
+    return false;
+  }
+
+  const prefix = `${uploadPath}/`;
+
+  if (!value.startsWith(prefix)) {
+    return false;
+  }
+
+  const fileName = value.slice(prefix.length);
+
+  return fileName !== "" && !fileName.includes("/") && !fileName.includes("\\");
 }
 
 export function isNumberInRange(value, min, max) {
