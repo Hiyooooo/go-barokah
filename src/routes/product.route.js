@@ -7,6 +7,7 @@ import {
   updateProductController,
 } from "../controllers/product.controller.js";
 import { authRequired, authorization } from "../middlewares/auth.middleware.js";
+import { uploadProductImage } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -17,12 +18,14 @@ router.post(
   "/",
   authRequired,
   authorization("admin", "owner"),
+  uploadProductImage.single("image"),
   createProductController,
 );
 router.patch(
   "/:id",
   authRequired,
   authorization("admin", "owner"),
+  uploadProductImage.single("image"),
   updateProductController,
 );
 router.delete(

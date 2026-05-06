@@ -21,6 +21,7 @@ model User {
 
   addresses   Address[]
   emailOtps   EmailOtp[]
+  cart         Cart?
 
   @@map("users")
 }
@@ -75,10 +76,42 @@ model Product {
 
   category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   type            Type @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  cartItems       CartItem[]
 
   @@index([categoryId])
   @@index([typeId])
   @@map("products")
+}
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  userId    String   @unique @map("user_id") @db.Char(36)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int      @map("cart_id")
+  productId Int      @map("product_id")
+  quantity  Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_items")
 }
 
 model Category {

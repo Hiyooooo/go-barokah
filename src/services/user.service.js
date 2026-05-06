@@ -2,7 +2,7 @@ import {
   findUserByPhone,
   updateAccount,
 } from "../repositories/user.repository.js";
-import { badRequest, isValidNumber } from "../utils/index.js";
+import { badRequest, isValidPhone } from "../utils/index.js";
 
 export async function updateAccountService(userId, payload) {
   if (!payload.username || !payload.username.trim()) {
@@ -14,7 +14,7 @@ export async function updateAccountService(userId, payload) {
   if (username.length < 3 || username.length > 50) {
     throw badRequest("Username must be between 3 and 50 characters");
   }
-  if (phone_number && !isValidNumber(phone_number)) {
+  if (phone_number && !isValidPhone(phone_number)) {
     throw badRequest("Invalid phone number format");
   }
 
