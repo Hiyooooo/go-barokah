@@ -15,7 +15,10 @@ import { errorHandler } from "./middlewares/error.handler.js";
 const app = express();
 app.use(cors());
 
-const allowedOrigins = ["https://go-barokah-rho.vercel.app"];
+const allowedOrigins = [
+  "https://go-barokah-rho.vercel.app",
+  "http://localhost:5173",
+];
 
 app.use(
   cors({
