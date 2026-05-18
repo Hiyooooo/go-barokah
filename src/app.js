@@ -14,6 +14,22 @@ import { errorHandler } from "./middlewares/error.handler.js";
 
 const app = express();
 app.use(cors());
+
+const allowedOrigins = ["https://go-barokah-rho.vercel.app"];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Origin not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
 app.use("/uploads", express.static("uploads"));
