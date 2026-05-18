@@ -24,7 +24,7 @@ tags:
   - name: Types
     description: Master data tipe produk. Hanya admin atau owner.
   - name: Cart
-    description: Keranjang belanja pengguna.
+    description: Keranjang belanja pengguna. Summary cart hanya menghitung total barang; ongkir dan grand total dihitung di checkout setelah alamat dipilih.
 
 paths:
   /api/:
@@ -616,6 +616,7 @@ paths:
       tags:
         - Cart
       summary: Ambil isi keranjang
+      description: Mengambil item keranjang dan summary harga barang. Ongkir dan grand total belum dihitung di cart karena alamat dipilih pada halaman checkout.
       security:
         - bearerAuth: []
       responses:
@@ -1397,21 +1398,23 @@ components:
 
     CartSummary:
       type: object
+      description: Ringkasan harga barang di cart. Tidak termasuk ongkir dan grand total final checkout.
       properties:
         items_count:
           type: integer
+          description: Jumlah jenis produk di cart.
         total_quantity:
           type: integer
+          description: Total semua quantity produk di cart.
         normal_subtotal:
           type: number
+          description: Total harga barang sebelum diskon produk.
         discount_total:
           type: number
+          description: Total potongan diskon produk.
         subtotal:
           type: number
-        shipping_fee:
-          type: number
-        grand_total:
-          type: number
+          description: Total harga barang setelah diskon produk. Ongkir dihitung di checkout.
 
     Cart:
       type: object
