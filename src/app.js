@@ -13,7 +13,6 @@ import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
 const app = express();
-app.use(cors());
 
 const allowedOrigins = [
   "https://go-barokah-rho.vercel.app",
