@@ -1,0 +1,1439 @@
+openapi: 3.0.3
+info:
+  title: Go Barokah API
+  version: 1.0.0
+  description: Dokumentasi REST API untuk aplikasi Go Barokah.
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+tags:
+  - name: Health
+    description: Endpoint pengecekan API.
+  - name: Auth
+    description: Registrasi dan login pengguna.
+  - name: OTP
+    description: Verifikasi email menggunakan OTP.
+  - name: Users
+    description: Data akun pengguna yang sedang login.
+  - name: Addresses
+    description: Alamat milik pengguna yang sedang login.
+  - name: Products
+    description: Katalog produk dan upload gambar produk.
+  - name: Categories
+    description: Master data kategori produk. Hanya admin atau owner.
+  - name: Types
+    description: Master data tipe produk. Hanya admin atau owner.
+  - name: Cart
+    description: Keranjang belanja pengguna.
+
+paths:
+  /api/:
+    get:
+      tags:
+        - Health
+      summary: Cek status API
+      responses:
+        "200":
+          description: API berjalan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Ok
+
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Registrasi akun baru
+      description: Membuat akun user baru dan mengirim OTP ke email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              email: user@example.com
+              password: secret123
+              username: Budi
+              phone_number: "081234567890"
+      responses:
+        "201":
+          description: Registrasi berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login pengguna
+      description: Login hanya berhasil jika email sudah diverifikasi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: user@example.com
+              password: secret123
+      responses:
+        "200":
+          description: Login berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/otp/request:
+    post:
+      tags:
+        - OTP
+      summary: Minta OTP email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpRequest"
+            example:
+              email: user@example.com
+      responses:
+        "200":
+          description: OTP berhasil dikirim.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Email OTP sent successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/otp/verify:
+    post:
+      tags:
+        - OTP
+      summary: Verifikasi OTP email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyRequest"
+            example:
+              email: user@example.com
+              otp: "123456"
+      responses:
+        "200":
+          description: OTP berhasil diverifikasi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Verify OTP successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/users:
+    patch:
+      tags:
+        - Users
+      summary: Update akun pengguna
+      description: Membutuhkan Bearer token dengan role user atau admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountRequest"
+            example:
+              username: Budi Santoso
+              phone_number: "081234567890"
+      responses:
+        "200":
+          description: Akun berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/users/address:
+    get:
+      tags:
+        - Addresses
+      summary: Ambil semua alamat pengguna
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar alamat pengguna.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Addresses
+      summary: Buat alamat baru
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressCreateRequest"
+            example:
+              label: Rumah
+              recipient_name: Budi Santoso
+              recipient_phone: "081234567890"
+              address_detail: Jl. Contoh No. 1
+              is_default: true
+      responses:
+        "201":
+          description: Alamat berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/users/address/{id}:
+    parameters:
+      - $ref: "#/components/parameters/AddressId"
+    get:
+      tags:
+        - Addresses
+      summary: Ambil alamat berdasarkan id
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail alamat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Addresses
+      summary: Update alamat
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressUpdateRequest"
+            example:
+              label: Kantor
+              is_default: false
+      responses:
+        "200":
+          description: Alamat berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Addresses
+      summary: Hapus alamat
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Alamat berhasil dihapus.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: Ambil semua produk
+      responses:
+        "200":
+          description: Daftar produk.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+    post:
+      tags:
+        - Products
+      summary: Buat produk baru
+      description: Membutuhkan Bearer token dengan role admin atau owner. Gambar wajib berupa file image maksimal 2 MB.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ProductCreateForm"
+      responses:
+        "201":
+          description: Produk berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/products/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      tags:
+        - Products
+      summary: Ambil produk berdasarkan id
+      responses:
+        "200":
+          description: Detail produk.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Products
+      summary: Update produk
+      description: Membutuhkan Bearer token dengan role admin atau owner. Gambar opsional; jika dikirim, gambar lama akan dihapus.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ProductUpdateForm"
+      responses:
+        "200":
+          description: Produk berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Products
+      summary: Hapus produk
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Produk berhasil dihapus.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/products/category:
+    get:
+      tags:
+        - Categories
+      summary: Ambil semua kategori
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar kategori.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Categories
+      summary: Buat kategori
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NameRequest"
+            example:
+              name: Beras
+      responses:
+        "201":
+          description: Kategori berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/products/category/{id}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags:
+        - Categories
+      summary: Ambil kategori berdasarkan id
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail kategori.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Categories
+      summary: Update kategori
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NameRequest"
+            example:
+              name: Sembako
+      responses:
+        "200":
+          description: Kategori berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/products/type:
+    get:
+      tags:
+        - Types
+      summary: Ambil semua tipe produk
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar tipe produk.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TypeListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Types
+      summary: Buat tipe produk
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NameRequest"
+            example:
+              name: Premium
+      responses:
+        "201":
+          description: Tipe berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TypeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/products/type/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TypeId"
+    get:
+      tags:
+        - Types
+      summary: Ambil tipe produk berdasarkan id
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail tipe produk.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TypeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Types
+      summary: Update tipe produk
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NameRequest"
+            example:
+              name: Medium
+      responses:
+        "200":
+          description: Tipe berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TypeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/cart:
+    get:
+      tags:
+        - Cart
+      summary: Ambil isi keranjang
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail keranjang.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags:
+        - Cart
+      summary: Kosongkan keranjang
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Keranjang berhasil dikosongkan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Tambah produk ke keranjang
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemCreateRequest"
+            example:
+              product_id: 1
+              quantity: 2
+      responses:
+        "201":
+          description: Produk berhasil ditambahkan ke keranjang.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/cart/items/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/CartProductId"
+    patch:
+      tags:
+        - Cart
+      summary: Update jumlah item keranjang
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemUpdateRequest"
+            example:
+              quantity: 3
+      responses:
+        "200":
+          description: Item keranjang berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Cart
+      summary: Hapus item dari keranjang
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Item keranjang berhasil dihapus.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /me:
+    get:
+      tags:
+        - Users
+      summary: Cek payload token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Token valid.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Protected route
+                  user:
+                    $ref: "#/components/schemas/TokenUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    CategoryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    TypeId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    AddressId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    CartProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+  responses:
+    BadRequest:
+      description: Request tidak valid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Bad request
+    Unauthorized:
+      description: Token tidak ada, format salah, tidak valid, atau expired.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Authentication token is required
+    Forbidden:
+      description: Role tidak memiliki akses.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Forbidden
+    NotFound:
+      description: Resource tidak ditemukan.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Resource not found
+    Conflict:
+      description: Data bentrok dengan data yang sudah ada.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Name already exists
+    InternalServerError:
+      description: Terjadi kesalahan server.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Internal server error
+
+  schemas:
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    TokenUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+          example: user
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        username:
+          type: string
+        phone_number:
+          type: string
+          nullable: true
+          example: "081234567890"
+      required:
+        - email
+        - password
+        - username
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        username:
+          type: string
+        phone_number:
+          type: string
+          nullable: true
+        image_url:
+          type: string
+          nullable: true
+        role:
+          type: string
+          example: user
+        createdAt:
+          type: string
+          format: date-time
+
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Successfully register
+        data:
+          type: object
+          properties:
+            account:
+              $ref: "#/components/schemas/AuthAccount"
+            message:
+              type: string
+              example: OTP has been sent to your email
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Successfully login
+        data:
+          type: object
+          properties:
+            account:
+              $ref: "#/components/schemas/AuthAccount"
+            token:
+              type: string
+              description: JWT untuk header Authorization.
+
+    OtpRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+
+    OtpVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        otp:
+          type: string
+          pattern: "^[0-9]{6}$"
+      required:
+        - email
+        - otp
+
+    UpdateAccountRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        phone_number:
+          type: string
+          nullable: true
+          example: "081234567890"
+      required:
+        - username
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        phoneNumber:
+          type: string
+          nullable: true
+        emailVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserProfileResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success update account
+        data:
+          $ref: "#/components/schemas/UserProfile"
+
+    AddressCreateRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        recipient_name:
+          type: string
+        recipient_phone:
+          type: string
+          example: "081234567890"
+        address_detail:
+          type: string
+        is_default:
+          type: boolean
+          default: false
+      required:
+        - label
+        - recipient_name
+        - recipient_phone
+        - address_detail
+
+    AddressUpdateRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        recipient_name:
+          type: string
+        recipient_phone:
+          type: string
+          example: "081234567890"
+        address_detail:
+          type: string
+        is_default:
+          type: boolean
+
+    Address:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        recipientName:
+          type: string
+        recipientPhone:
+          type: string
+        addressDetail:
+          type: string
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AddressResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Address"
+
+    AddressListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Address"
+
+    NameRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CategoryResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Category"
+
+    CategoryListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+
+    Type:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TypeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Type"
+
+    TypeListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Type"
+
+    ProductCreateForm:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: string
+          example: "35000"
+        description:
+          type: string
+        category_id:
+          type: string
+          example: "1"
+        type_id:
+          type: string
+          example: "1"
+        stock:
+          type: string
+          example: "20"
+        discount_amount:
+          type: string
+          description: Persentase diskon 0 sampai 100.
+          example: "10"
+        image:
+          type: string
+          format: binary
+      required:
+        - name
+        - price
+        - description
+        - category_id
+        - type_id
+        - stock
+        - image
+
+    ProductUpdateForm:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: string
+          example: "35000"
+        description:
+          type: string
+        category_id:
+          type: string
+          example: "1"
+        type_id:
+          type: string
+          example: "1"
+        stock:
+          type: string
+          example: "20"
+        discount_amount:
+          type: string
+          description: Persentase diskon 0 sampai 100.
+          example: "10"
+        image:
+          type: string
+          format: binary
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        categoryId:
+          type: integer
+        typeId:
+          type: integer
+        price:
+          type: number
+          format: float
+        description:
+          type: string
+        image_url:
+          type: string
+          example: /uploads/products/1778020496326-product.jpg
+        stock:
+          type: integer
+        discount_amount:
+          type: integer
+          minimum: 0
+          maximum: 100
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        category:
+          $ref: "#/components/schemas/Category"
+        type:
+          $ref: "#/components/schemas/Type"
+        final_price:
+          type: integer
+
+    ProductResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Product"
+
+    ProductListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get all products
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+
+    ProductDeleteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success delete product
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            categoryId:
+              type: integer
+            typeId:
+              type: integer
+            price:
+              type: number
+            description:
+              type: string
+            image_url:
+              type: string
+            stock:
+              type: integer
+            discount_amount:
+              type: integer
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    CartItemCreateRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          minimum: 1
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+      required:
+        - product_id
+
+    CartItemUpdateRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+      required:
+        - quantity
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        name:
+          type: string
+        image_url:
+          type: string
+        price:
+          type: number
+        discount_amount:
+          type: number
+        final_price:
+          type: integer
+        quantity:
+          type: integer
+        normal_subtotal:
+          type: number
+        discount_subtotal:
+          type: number
+        subtotal:
+          type: number
+        stock:
+          type: integer
+
+    CartSummary:
+      type: object
+      properties:
+        items_count:
+          type: integer
+        total_quantity:
+          type: integer
+        normal_subtotal:
+          type: number
+        discount_total:
+          type: number
+        subtotal:
+          type: number
+        shipping_fee:
+          type: number
+        grand_total:
+          type: number
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        summary:
+          $ref: "#/components/schemas/CartSummary"
+
+    CartResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Cart"

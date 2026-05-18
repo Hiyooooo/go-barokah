@@ -32,9 +32,3 @@ export async function updateType(id, data) {
     },
   });
 }
-
-export async function deleteType(id) {
-  return await prisma.type.delete({
-    where: { id: id },
-  });
-}

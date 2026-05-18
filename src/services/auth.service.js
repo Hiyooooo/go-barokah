@@ -7,7 +7,7 @@ import { requestEmailOtpByUserId } from "./otp.service.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { signToken } from "../utils/jwt.js";
 
-import { badRequest, isEmail } from "../utils/index.js";
+import { badRequest, isEmail, isValidPhone } from "../utils/index.js";
 
 export function sanitizeUser(account) {
   return {

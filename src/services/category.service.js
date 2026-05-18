@@ -1,6 +1,5 @@
 import {
   createCategory,
-  deleteCategory,
   findCategoryById,
   findCategoryByName,
   getAllCategory,
@@ -86,14 +85,6 @@ export async function updateCategoryService(id, data) {
   };
 
   const result = await updateCategory(existingCategory.id, payload);
-
-  return result;
-}
-
-export async function deleteCategoryService(id) {
-  const existingCategory = await getExistingCategoryOrThrow(id);
-
-  const result = await deleteCategory(existingCategory.id);
 
   return result;
 }

@@ -1,6 +1,5 @@
 import {
   createCategoryService,
-  deleteCategoryService,
   getAllCategoryService,
   getCategoryByIdService,
   updateCategoryService,
@@ -47,18 +46,6 @@ export async function updateCategoryController(req, res, next) {
     const category = await updateCategoryService(req.params.id, req.body);
     return res.status(200).json({
       message: "Successfull updated category",
-      data: category,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function deleteCategoryController(req, res, next) {
-  try {
-    const category = await deleteCategoryService(req.params.id);
-    return res.status(200).json({
-      message: "Successfull delete category",
       data: category,
     });
   } catch (error) {

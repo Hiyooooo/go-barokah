@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import swaggerUi from "swagger-ui-express";
 import authRoute from "./routes/auth.route.js";
 import addressRoute from "./routes/address.route.js";
 import otpRoute from "./routes/otp.route.js";
@@ -16,6 +17,19 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/uploads", express.static("uploads"));
+app.get("/openapi.yaml", (req, res, next) => {
+  res.sendFile("openapi.yaml", { root: process.cwd() }, (error) => {
+    if (error) next(error);
+  });
+});
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(null, {
+    customSiteTitle: "Go Barokah API Docs",
+    swaggerUrl: "/openapi.yaml",
+  }),
+);
 
 app.get("/api/", (req, res) => {
   res.json({ message: "Ok" });

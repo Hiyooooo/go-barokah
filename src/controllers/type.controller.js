@@ -1,6 +1,5 @@
 import {
   createTypeService,
-  deleteTypeService,
   getAllTypeService,
   getTypeByIdService,
   updateTypeService,
@@ -47,18 +46,6 @@ export async function updateTypeController(req, res, next) {
     const type = await updateTypeService(req.params.id, req.body);
     return res.status(200).json({
       message: "Successfull updated type",
-      data: type,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function deleteTypeController(req, res, next) {
-  try {
-    const type = await deleteTypeService(req.params.id);
-    return res.status(200).json({
-      message: "Successfull delete type",
       data: type,
     });
   } catch (error) {

@@ -64,17 +64,11 @@ function buildCartResponse(cart) {
     },
   );
 
-  const shippingFee = 0;
-
   return {
     id: cart?.id ?? null,
     user_id: cart?.userId ?? null,
     items,
-    summary: {
-      ...summary,
-      shipping_fee: shippingFee,
-      grand_total: summary.subtotal + shippingFee,
-    },
+    summary,
   };
 }
 

@@ -45,6 +45,16 @@ export async function updateAccount(userId, data) {
       name: data.username,
       phoneNumber: data.phone_number,
     },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phoneNumber: true,
+      emailVerified: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
 }
 

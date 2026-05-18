@@ -2,7 +2,6 @@ import express from "express";
 import { authorization, authRequired } from "../middlewares/auth.middleware.js";
 import {
   createTypeController,
-  deleteTypeController,
   getAllTypeController,
   getTypeByIdController,
   updateTypeController,
@@ -36,13 +35,6 @@ router.patch(
   authRequired,
   authorization("admin", "owner"),
   updateTypeController,
-);
-
-router.delete(
-  "/:id",
-  authRequired,
-  authorization("admin", "owner"),
-  deleteTypeController,
 );
 
 export default router;

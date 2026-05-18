@@ -1,6 +1,5 @@
 import {
   createType,
-  deleteType,
   findTypeById,
   findTypeByName,
   getAllType,
@@ -83,14 +82,6 @@ export async function updateTypeService(id, data) {
   };
 
   const result = await updateType(existingType.id, payload);
-
-  return result;
-}
-
-export async function deleteTypeService(id) {
-  const existingType = await getExistingTypeOrThrow(id);
-
-  const result = await deleteType(existingType.id);
 
   return result;
 }

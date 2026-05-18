@@ -32,9 +32,3 @@ export async function updateCategory(id, data) {
     },
   });
 }
-
-export async function deleteCategory(id) {
-  return await prisma.category.delete({
-    where: { id: id },
-  });
-}
