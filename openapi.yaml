@@ -25,6 +25,10 @@ tags:
     description: Master data tipe produk. Hanya admin atau owner.
   - name: Cart
     description: Keranjang belanja pengguna. Summary cart hanya menghitung total barang; ongkir dan grand total dihitung di checkout setelah alamat dipilih.
+  - name: Orders
+    description: Checkout cart menjadi order dan riwayat order milik pengguna.
+  - name: Admin Orders
+    description: Operasional order untuk admin. Owner dapat mengakses jika masuk ke halaman admin.
 
 paths:
   /api/:
@@ -611,7 +615,7 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/cart:
+  /api/carts:
     get:
       tags:
         - Cart
@@ -648,7 +652,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/cart/items:
+  /api/carts/items:
     post:
       tags:
         - Cart
@@ -680,7 +684,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/cart/items/{productId}:
+  /api/carts/items/{productId}:
     parameters:
       - $ref: "#/components/parameters/CartProductId"
     patch:
@@ -725,6 +729,264 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CartResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/orders:
+    post:
+      tags:
+        - Orders
+      summary: Checkout cart menjadi order
+      description: >
+        Membuat order dari isi cart pengguna yang sedang login. Backend akan
+        mengambil alamat berdasarkan address_id, menghitung subtotal barang,
+        menghitung dummy shipping fee, membuat order dan order item, mengurangi
+        stok produk, lalu mengosongkan cart.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreateRequest"
+            example:
+              address_id: 1
+              notes: Tolong kirim sore hari
+      responses:
+        "201":
+          description: Order berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    get:
+      tags:
+        - Orders
+      summary: Ambil daftar order milik pengguna
+      description: Mengambil daftar order milik pengguna yang sedang login. Bisa difilter berdasarkan status dan payment_status.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+          example: PENDING
+        - name: payment_status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PaymentStatus"
+          example: UNPAID
+      responses:
+        "200":
+          description: Daftar order milik pengguna.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/orders/{id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+
+    get:
+      tags:
+        - Orders
+      summary: Ambil detail order milik pengguna
+      description: Mengambil detail order berdasarkan id, hanya jika order tersebut milik pengguna yang sedang login.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/orders/{id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+
+    patch:
+      tags:
+        - Orders
+      summary: Batalkan order milik pengguna
+      description: >
+        Membatalkan order milik pengguna yang sedang login. Untuk MVP,
+        order hanya bisa dibatalkan jika status masih PENDING dan paymentStatus
+        masih UNPAID. Jika order dibatalkan, stok produk dikembalikan.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Order berhasil dibatalkan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/orders:
+    get:
+      tags:
+        - Admin Orders
+      summary: Ambil semua order untuk admin
+      description: >
+        Mengambil semua order dari semua pengguna. Endpoint ini untuk operasional
+        admin. Owner dapat mengakses endpoint ini jika masuk ke halaman admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+          example: PENDING
+        - name: payment_status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PaymentStatus"
+          example: UNPAID
+      responses:
+        "200":
+          description: Daftar semua order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/orders/{id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+
+    get:
+      tags:
+        - Admin Orders
+      summary: Ambil detail order untuk admin
+      description: Mengambil detail order berdasarkan id untuk kebutuhan operasional admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/orders/{id}/status:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+
+    patch:
+      tags:
+        - Admin Orders
+      summary: Update status order
+      description: >
+        Update status order oleh admin. Status transition yang disarankan:
+        PENDING ke PROCESSING atau CANCELLED, PROCESSING ke SHIPPED atau
+        CANCELLED, dan SHIPPED ke COMPLETED.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusUpdateRequest"
+            example:
+              status: PROCESSING
+      responses:
+        "200":
+          description: Status order berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/orders/{id}/payment-status:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+
+    patch:
+      tags:
+        - Admin Orders
+      summary: Update payment status order
+      description: >
+        Update payment status secara manual/dummy oleh admin. Jika payment_status
+        diubah menjadi PAID, backend akan mengisi paidAt.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderPaymentStatusUpdateRequest"
+            example:
+              payment_status: PAID
+      responses:
+        "200":
+          description: Payment status berhasil diupdate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -797,6 +1059,14 @@ components:
       example: 1
     CartProductId:
       name: productId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    OrderId:
+      name: id
       in: path
       required: true
       schema:
@@ -1440,3 +1710,211 @@ components:
           type: string
         data:
           $ref: "#/components/schemas/Cart"
+
+    OrderStatus:
+      type: string
+      enum:
+        - PENDING
+        - PROCESSING
+        - SHIPPED
+        - COMPLETED
+        - CANCELLED
+      example: PENDING
+
+    PaymentStatus:
+      type: string
+      enum:
+        - UNPAID
+        - PAID
+        - FAILED
+        - REFUNDED
+      example: UNPAID
+
+    OrderCreateRequest:
+      type: object
+      properties:
+        address_id:
+          type: integer
+          minimum: 1
+          description: ID alamat milik pengguna yang akan dipakai sebagai alamat pengiriman.
+        notes:
+          type: string
+          nullable: true
+          description: Catatan opsional untuk order.
+      required:
+        - address_id
+
+    OrderStatusUpdateRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+      required:
+        - status
+
+    OrderPaymentStatusUpdateRequest:
+      type: object
+      properties:
+        payment_status:
+          $ref: "#/components/schemas/PaymentStatus"
+      required:
+        - payment_status
+
+    OrderUser:
+      type: object
+      description: Data ringkas pengguna pemilik order.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+          nullable: true
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        productImageUrl:
+          type: string
+          nullable: true
+          example: /uploads/products/1778020496326-product.jpg
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          format: float
+          description: Harga produk sebelum diskon pada saat checkout.
+        discountAmount:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Persentase diskon produk pada saat checkout.
+        finalUnitPrice:
+          type: number
+          format: float
+          description: Harga produk setelah diskon pada saat checkout.
+        normalSubtotal:
+          type: number
+          format: float
+          description: unitPrice dikali quantity.
+        discountSubtotal:
+          type: number
+          format: float
+          description: Total potongan diskon untuk item ini.
+        subtotal:
+          type: number
+          format: float
+          description: finalUnitPrice dikali quantity.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        addressId:
+          type: integer
+          nullable: true
+        orderNumber:
+          type: string
+          example: ORD-20260603-1780000000000-1234
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
+        recipientName:
+          type: string
+        recipientPhone:
+          type: string
+          example: "081234567890"
+        shippingAddress:
+          type: string
+        normalSubtotal:
+          type: number
+          format: float
+          description: Total harga barang sebelum diskon produk.
+        discountTotal:
+          type: number
+          format: float
+          description: Total potongan diskon produk.
+        itemsSubtotal:
+          type: number
+          format: float
+          description: Total harga barang setelah diskon produk.
+        shippingFee:
+          type: number
+          format: float
+          description: Ongkir dummy hasil perhitungan checkout.
+        grandTotal:
+          type: number
+          format: float
+          description: itemsSubtotal ditambah shippingFee.
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        user:
+          $ref: "#/components/schemas/OrderUser"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+
+    OrderResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success create order
+        data:
+          $ref: "#/components/schemas/Order"
+
+    OrderListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get orders
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"

@@ -8,32 +8,22 @@ import productRoute from "./routes/product.route.js";
 import categoryRoute from "./routes/category.route.js";
 import cartRoute from "./routes/cart.route.js";
 import typeRoute from "./routes/type.route.js";
+import orderRoute from "./routes/order.route.js";
+import ownerOrderRoute from "./routes/admin-order.route.js";
 import userRoute from "./routes/user.route.js";
 import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
 const app = express();
 
-const allowedOrigins = [
-  "https://go-barokah-rho.vercel.app",
-  "http://localhost:5173",
-];
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Origin not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.use(
+  cors({
+    origin: ["https://go-barokah-rho.vercel.app", "http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 
@@ -61,7 +51,9 @@ app.use("/api/users/address", addressRoute);
 app.use("/api/products/category", categoryRoute);
 app.use("/api/products/type", typeRoute);
 app.use("/api/products", productRoute);
-app.use("/api/cart", cartRoute);
+app.use("/api/carts", cartRoute);
+app.use("/api/orders", orderRoute);
+app.use("/api/admin/orders", ownerOrderRoute);
 app.use("/api/users", userRoute);
 
 app.get("/me", authRequired, (req, res) => {
