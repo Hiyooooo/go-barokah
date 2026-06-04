@@ -10,7 +10,7 @@ import {
   updateOrderPaymentStatus,
   updateORderStatus,
 } from "../repositories/order.repository.js";
-import { badRequest, parsePositiveInt } from "../utils/index.js";
+import { badRequest, notFound, parsePositiveInt } from "../utils/index.js";
 
 const ORDER_STATUSES = [
   "PENDING",
@@ -97,9 +97,9 @@ function buildCheckoutItems(cartItems) {
       throw badRequest(`${product.name} quantity exceeds product stock`);
     }
 
-    const unitPriclUne = Number(product.price);
+    const unitPrice = Number(product.price);
     const discountAmount = Number(product.discount_amount ?? 0);
-    const finaitPrice = calculateFinalUnitPrice(unitPrice, discountAmount);
+    const finalUnitPrice = calculateFinalUnitPrice(unitPrice, discountAmount);
     const quantity = cartItem.quantity;
     const normalSubtotal = unitPrice * quantity;
     const subtotal = finalUnitPrice * quantity;
