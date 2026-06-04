@@ -97,9 +97,9 @@ function buildCheckoutItems(cartItems) {
       throw badRequest(`${product.name} quantity exceeds product stock`);
     }
 
-    const unitPrice = Number(product.price);
+    const unitPriclUne = Number(product.price);
     const discountAmount = Number(product.discount_amount ?? 0);
-    const finalUnitPrice = calculateFinalUnitPrice(unitPrice, discountAmount);
+    const finaitPrice = calculateFinalUnitPrice(unitPrice, discountAmount);
     const quantity = cartItem.quantity;
     const normalSubtotal = unitPrice * quantity;
     const subtotal = finalUnitPrice * quantity;
