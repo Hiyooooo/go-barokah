@@ -8,8 +8,9 @@ import {
   findOrderByIdAndUserId,
   findOrderByUserId,
   updateOrderPaymentStatus,
-  updateORderStatus,
+  updateOrderStatus,
 } from "../repositories/order.repository.js";
+import { findUserById } from "../repositories/user.repository.js";
 import { badRequest, notFound, parsePositiveInt } from "../utils/index.js";
 
 const ORDER_STATUSES = [
@@ -61,12 +62,12 @@ function generateOrderNumber() {
 }
 
 function normalizeOptionNotes(notes) {
-  if (notes === undefined && notes === null) {
+  if (notes === undefined || notes === null) {
     return null;
   }
 
   const normalized = String(notes).trim();
-  return normalized || nulls;
+  return normalized || null;
 }
 
 function normalizeStatus(value, fieldName) {
@@ -120,7 +121,7 @@ function buildCheckoutItems(cartItems) {
   });
 }
 
-function buildCheckoutTotals(items) {
+function buildCheckoutTotals(items, options = {}) {
   const baseTotals = items.reduce(
     (result, item) => ({
       normalSubtotal: result.normalSubtotal + item.normalSubtotal,
@@ -136,10 +137,13 @@ function buildCheckoutTotals(items) {
     },
   );
 
-  const shippingFee = calculateDummyShippingFee({
-    itemsSubtotal: baseTotals.itemsSubtotal,
-    totalQuantity: baseTotals.totalQuantity,
-  });
+  const shippingFee =
+    options.fulfillmentMethod === "PICKUP"
+      ? 0
+      : calculateDummyShippingFee({
+          itemsSubtotal: baseTotals.itemsSubtotal,
+          totalQuantity: baseTotals.totalQuantity,
+        });
 
   return {
     ...baseTotals,
@@ -180,7 +184,7 @@ function assertValidPaymentTransition(currentStatus, nextStatus) {
   }
 }
 
-export async function createOrderService(userId, payload) {
+export async function createOrderService(userId, payload = {}) {
   const addressId = parsePositiveInt(payload.address_id, "address_id");
   const notes = normalizeOptionNotes(payload.notes);
 
@@ -203,6 +207,53 @@ export async function createOrderService(userId, payload) {
       userId,
       cartId: cart.id,
       address,
+      fulfillmentMethod: "DELIVERY",
+      orderNumber,
+      items,
+      totals,
+      notes,
+    });
+  } catch (error) {
+    if (error.message?.startsWith("Insufficient stock")) {
+      throw badRequest(error.message);
+    }
+
+    throw error;
+  }
+}
+
+export async function createPickupOrderService(userId, payload = {}) {
+  const notes = normalizeOptionNotes(payload.notes);
+
+  const user = await findUserById(userId);
+  if (!user) {
+    throw notFound("User not found");
+  }
+
+  if (!user.phoneNumber) {
+    throw badRequest("Phone number is required for pickup order");
+  }
+
+  const cart = await findCartByUserId(userId);
+  if (!cart || cart.items.length === 0) {
+    throw badRequest("Cart is empty");
+  }
+
+  const items = buildCheckoutItems(cart.items);
+  const totals = buildCheckoutTotals(items, {
+    fulfillmentMethod: "PICKUP",
+  });
+  const orderNumber = generateOrderNumber();
+
+  try {
+    return await createOrderFromCart({
+      userId,
+      cartId: cart.id,
+      fulfillmentMethod: "PICKUP",
+      pickupRecipient: {
+        name: user.name,
+        phone: user.phoneNumber,
+      },
       orderNumber,
       items,
       totals,
@@ -267,7 +318,7 @@ export async function getAllOrdersService(filters = {}) {
 
 export async function getOrderByIdForAdminService(id) {
   const parsedId = parsePositiveInt(id, "order id");
-  const order = await findOrderByUserId(parsedId);
+  const order = await findOrderById(parsedId);
 
   if (!order) {
     throw notFound("Order not found");
@@ -302,7 +353,7 @@ export async function updateOrderStatusService(id, payload) {
     ...(nextStatus === "COMPLETED" && { completedAt: new Date() }),
   };
 
-  return await updateORderStatus(parsedId, data);
+  return await updateOrderStatus(parsedId, data);
 }
 
 export async function updatePaymentStatusService(id, payload) {

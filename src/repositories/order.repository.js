@@ -18,6 +18,8 @@ export async function createOrderFromCart({
   userId,
   cartId,
   address,
+  fulfillmentMethod = "DELIVERY",
+  pickupRecipient,
   orderNumber,
   items,
   totals,
@@ -27,13 +29,14 @@ export async function createOrderFromCart({
     const order = await tx.order.create({
       data: {
         userId,
-        addressId: address.id,
+        addressId: address?.id ?? null,
         orderNumber,
+        fulfillmentMethod,
         status: "PENDING",
         paymentStatus: "UNPAID",
-        recipientName: address.recipientName,
-        recipientPhone: address.recipientPhone,
-        shippingAddress: address.addressDetail,
+        recipientName: address?.recipientName ?? pickupRecipient.name,
+        recipientPhone: address?.recipientPhone ?? pickupRecipient.phone,
+        shippingAddress: address?.addressDetail ?? "Ambil sendiri di toko",
         normalSubtotal: totals.normalSubtotal,
         discountTotal: totals.discountTotal,
         itemsSubtotal: totals.itemsSubtotal,
@@ -52,7 +55,7 @@ export async function createOrderFromCart({
             normalSubtotal: item.normalSubtotal,
             discountSubtotal: item.discountSubtotal,
             subtotal: item.subtotal,
-            unitCost: item.unitCost,
+            unitCost: item.unitCost ?? 0,
           })),
         },
       },
@@ -107,7 +110,7 @@ export async function findOrderByUserId(userId, filters = {}) {
 }
 
 export async function findOrderByIdAndUserId(id, userId) {
-  return await prisma.findFirst({
+  return await prisma.order.findFirst({
     where: {
       id,
       userId,
@@ -173,7 +176,7 @@ export async function cancelOrderAndRestoreStock(id) {
   });
 }
 
-export async function updateORderStatus(id, data) {
+export async function updateOrderStatus(id, data) {
   return await prisma.order.update({
     where: { id },
     data,
