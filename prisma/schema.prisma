@@ -8,56 +8,55 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid()) @db.Char(36)
-  name        String   @db.VarChar(255)
-  email       String   @unique @db.VarChar(255)
-  password    String   @db.VarChar(255)
-  role        String   @db.VarChar(100)
-  phoneNumber String?  @map("phone_number") @db.VarChar(20)
+  id            String  @id @default(uuid()) @db.Char(36)
+  name          String  @db.VarChar(255)
+  email         String  @unique @db.VarChar(255)
+  password      String  @db.VarChar(255)
+  role          String  @db.VarChar(100)
+  phoneNumber   String? @map("phone_number") @db.VarChar(20)
   emailVerified Boolean @default(false) @map("email_verified")
 
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  addresses   Address[]
-  emailOtps   EmailOtp[]
-  cart         Cart?
-  orders      Order[]
-
+  addresses Address[]
+  emailOtps EmailOtp[]
+  cart      Cart?
+  orders    Order[]
 
   @@map("users")
 }
 
 model Address {
-  id             Int      @id @default(autoincrement())
-  userId         String   @map("user_id") @db.Char(36)
+  id     Int    @id @default(autoincrement())
+  userId String @map("user_id") @db.Char(36)
 
-  label          String   @db.VarChar(100)
-  recipientName  String   @map("recipient_name") @db.VarChar(255)
-  recipientPhone String   @map("recipient_phone") @db.VarChar(20)
-  addressDetail  String   @map("address_detail") @db.Text
-  isDefault      Boolean  @default(false) @map("is_default")
+  label          String  @db.VarChar(100)
+  recipientName  String  @map("recipient_name") @db.VarChar(255)
+  recipientPhone String  @map("recipient_phone") @db.VarChar(20)
+  addressDetail  String  @map("address_detail") @db.Text
+  isDefault      Boolean @default(false) @map("is_default")
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("address")
 }
 
 model EmailOtp {
-  id        Int      @id @default(autoincrement())
-  userId    String   @map("user_id") @db.Char(36)
-  otpHash   String   @map("otp_hash") @db.VarChar(255)
-  expiresAt DateTime @map("expires_at")
+  id        Int       @id @default(autoincrement())
+  userId    String    @map("user_id") @db.Char(36)
+  otpHash   String    @map("otp_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("email_otp")
@@ -76,39 +75,40 @@ model Product {
   created_at      DateTime @default(now()) @db.Timestamp(0)
   updated_at      DateTime @updatedAt @db.Timestamp(0)
 
-  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  type            Type     @relation(fields: [typeId], references: [id], onDelete: Cascade)
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  type       Type        @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   @@index([categoryId])
   @@index([typeId])
   @@map("products")
 }
+
 model Cart {
-  id        Int      @id @default(autoincrement())
-  userId    String   @unique @map("user_id") @db.Char(36)
+  id     Int    @id @default(autoincrement())
+  userId String @unique @map("user_id") @db.Char(36)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
 
   @@map("carts")
 }
 
 model CartItem {
-  id        Int      @id @default(autoincrement())
-  cartId    Int      @map("cart_id")
-  productId Int      @map("product_id")
+  id        Int @id @default(autoincrement())
+  cartId    Int @map("cart_id")
+  productId Int @map("product_id")
   quantity  Int
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([cartId, productId])
   @@index([cartId])
@@ -122,88 +122,90 @@ model Category {
   created_at DateTime @default(now()) @db.Timestamp(0)
   updated_at DateTime @updatedAt @db.Timestamp(0)
 
-  products   Product[]
+  products Product[]
 
   @@map("categories")
 }
 
-model Type{
+model Type {
   id         Int      @id @default(autoincrement())
   name       String   @unique @db.VarChar(255)
   created_at DateTime @default(now()) @db.Timestamp(0)
   updated_at DateTime @updatedAt @db.Timestamp(0)
 
-  products   Product[]
+  products Product[]
 
   @@map("types")
 }
 
 model Order {
-  id              Int      @id @default(autoincrement())
-  userId          String   @map("user_id") @db.Char(36)
-  addressId       Int?     @map("address_id")
-  orderNumber     String   @unique @map("order_number") @db.VarChar(100)
+  id                Int    @id @default(autoincrement())
+  userId            String @map("user_id") @db.Char(36)
+  addressId         Int?   @map("address_id")
+  orderNumber       String @unique @map("order_number") @db.VarChar(100)
+  fulfillmentMethod String @default("DELIVERY") @map("fulfillment_method") @db.VarChar(50)
 
-  status          String   @db.VarChar(50)
-  paymentStatus   String   @map("payment_status") @db.VarChar(50)
+  status        String @db.VarChar(50)
+  paymentStatus String @map("payment_status") @db.VarChar(50)
 
-  recipientName   String   @map("recipient_name") @db.VarChar(255)
-  recipientPhone  String   @map("recipient_phone") @db.VarChar(20)
-  shippingAddress String   @map("shipping_address") @db.Text
+  recipientName   String @map("recipient_name") @db.VarChar(255)
+  recipientPhone  String @map("recipient_phone") @db.VarChar(20)
+  shippingAddress String @map("shipping_address") @db.Text
 
-  normalSubtotal  Float    @map("normal_subtotal")
-  discountTotal   Float    @default(0) @map("discount_total")
-  itemsSubtotal   Float    @map("items_subtotal")
-  shippingFee     Float    @default(0) @map("shipping_fee")
-  grandTotal      Float    @map("grand_total")
+  normalSubtotal Float @map("normal_subtotal")
+  discountTotal  Float @default(0) @map("discount_total")
+  itemsSubtotal  Float @map("items_subtotal")
+  shippingFee    Float @default(0) @map("shipping_fee")
+  grandTotal     Float @map("grand_total")
 
-  totalCost       Float    @default(0) @map("total_cost")
-  grossProfit     Float    @default(0) @map("gross_profit")
+  totalCost   Float @default(0) @map("total_cost")
+  grossProfit Float @default(0) @map("gross_profit")
 
-  notes           String?  @db.Text
+  notes String? @db.Text
 
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  paidAt          DateTime? @map("paid_at")
-  cancelledAt     DateTime? @map("cancelled_at")
-  completedAt     DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  paidAt      DateTime? @map("paid_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  completedAt DateTime? @map("completed_at")
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items           OrderItem[]
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items OrderItem[]
 
   @@index([userId])
   @@index([status])
   @@index([paymentStatus])
+  @@index([fulfillmentMethod])
   @@index([createdAt])
   @@map("orders")
 }
 
 model OrderItem {
-  id              Int      @id @default(autoincrement())
-  orderId         Int      @map("order_id")
-  productId       Int      @map("product_id")
+  id        Int @id @default(autoincrement())
+  orderId   Int @map("order_id")
+  productId Int @map("product_id")
 
-  productName     String   @map("product_name") @db.VarChar(255)
-  productImageUrl String?  @map("product_image_url") @db.VarChar(255)
+  productName     String  @map("product_name") @db.VarChar(255)
+  productImageUrl String? @map("product_image_url") @db.VarChar(255)
 
-  quantity        Int
+  quantity Int
 
-  unitPrice       Float    @map("unit_price")
-  discountAmount  Int      @default(0) @map("discount_amount")
-  finalUnitPrice  Float    @map("final_unit_price")
-  normalSubtotal  Float    @map("normal_subtotal")
-  discountSubtotal Float   @default(0) @map("discount_subtotal")
-  subtotal        Float
+  unitPrice        Float @map("unit_price")
+  discountAmount   Int   @default(0) @map("discount_amount")
+  finalUnitPrice   Float @map("final_unit_price")
+  normalSubtotal   Float @map("normal_subtotal")
+  discountSubtotal Float @default(0) @map("discount_subtotal")
+  subtotal         Float
 
-  unitCost        Float    @default(0) @map("unit_cost")
-  totalCost       Float    @default(0) @map("total_cost")
-  grossProfit     Float    @default(0) @map("gross_profit")
+  unitCost    Float @default(0) @map("unit_cost")
+  totalCost   Float @default(0) @map("total_cost")
+  grossProfit Float @default(0) @map("gross_profit")
 
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
   @@index([productId])

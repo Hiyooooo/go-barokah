@@ -804,6 +804,42 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/orders/pickup:
+    post:
+      tags:
+        - Orders
+      summary: Checkout cart menjadi order pickup
+      description: >
+        Membuat order dari isi cart pengguna yang sedang login untuk pengambilan
+        sendiri di toko. Backend akan menghitung subtotal barang, membuat order
+        dan order item, mengurangi stok produk, mengosongkan cart, dan
+        menetapkan shippingFee menjadi 0.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderPickupCreateRequest"
+            example:
+              notes: Akan diambil sore hari
+      responses:
+        "201":
+          description: Order pickup berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPickupResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/orders/{id}:
     parameters:
       - $ref: "#/components/parameters/OrderId"
@@ -821,7 +857,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderResponse"
+                $ref: "#/components/schemas/OrderDetailResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -849,7 +885,56 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderResponse"
+                $ref: "#/components/schemas/OrderCancelResponse"
+              example:
+                message: Success cancel order
+                data:
+                  id: 4
+                  userId: 43e95931-b411-4631-8b0c-8d63c62d95bd
+                  addressId: 45
+                  orderNumber: ORD-20260605-1780623864437-5186
+                  fulfillmentMethod: DELIVERY
+                  status: CANCELLED
+                  paymentStatus: UNPAID
+                  recipientName: Human001
+                  recipientPhone: "085219517482"
+                  shippingAddress: Jl. 4jso SPlooo ksolwnili Sok3wifpls2
+                  normalSubtotal: 72500
+                  discountTotal: 0
+                  itemsSubtotal: 72500
+                  shippingFee: 10000
+                  grandTotal: 82500
+                  totalCost: 0
+                  grossProfit: 0
+                  notes: null
+                  createdAt: "2026-06-05T01:44:24.441Z"
+                  updatedAt: "2026-06-05T01:45:57.569Z"
+                  paidAt: null
+                  cancelledAt: "2026-06-05T01:45:57.567Z"
+                  completedAt: null
+                  user:
+                    id: 43e95931-b411-4631-8b0c-8d63c62d95bd
+                    name: human001
+                    email: jibyl@wshu.net
+                    phoneNumber: null
+                  items:
+                    - id: 4
+                      orderId: 4
+                      productId: 22
+                      productName: Indomie Goreng
+                      productImageUrl: /uploads/products/1778020496326-product.jpg
+                      quantity: 29
+                      unitPrice: 2500
+                      discountAmount: 0
+                      finalUnitPrice: 2500
+                      normalSubtotal: 72500
+                      discountSubtotal: 0
+                      subtotal: 72500
+                      unitCost: 0
+                      totalCost: 0
+                      grossProfit: 0
+                      createdAt: "2026-06-05T01:44:24.441Z"
+                      updatedAt: "2026-06-05T01:44:24.441Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -888,7 +973,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderListResponse"
+                $ref: "#/components/schemas/OrderAdminListResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -911,7 +996,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderResponse"
+                $ref: "#/components/schemas/OrderDetailResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -947,7 +1032,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderResponse"
+                $ref: "#/components/schemas/OrderStatusUpdateResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -984,7 +1069,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderResponse"
+                $ref: "#/components/schemas/OrderPaymentStatusUpdateResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1730,6 +1815,13 @@ components:
         - REFUNDED
       example: UNPAID
 
+    FulfillmentMethod:
+      type: string
+      enum:
+        - DELIVERY
+        - PICKUP
+      example: DELIVERY
+
     OrderCreateRequest:
       type: object
       properties:
@@ -1743,6 +1835,14 @@ components:
           description: Catatan opsional untuk order.
       required:
         - address_id
+
+    OrderPickupCreateRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          nullable: true
+          description: Catatan opsional untuk order pickup.
 
     OrderStatusUpdateRequest:
       type: object
@@ -1819,6 +1919,18 @@ components:
           type: number
           format: float
           description: finalUnitPrice dikali quantity.
+        unitCost:
+          type: number
+          format: float
+          description: Harga modal per unit pada saat checkout.
+        totalCost:
+          type: number
+          format: float
+          description: unitCost dikali quantity.
+        grossProfit:
+          type: number
+          format: float
+          description: subtotal dikurangi totalCost.
         createdAt:
           type: string
           format: date-time
@@ -1840,6 +1952,8 @@ components:
         orderNumber:
           type: string
           example: ORD-20260603-1780000000000-1234
+        fulfillmentMethod:
+          $ref: "#/components/schemas/FulfillmentMethod"
         status:
           $ref: "#/components/schemas/OrderStatus"
         paymentStatus:
@@ -1866,11 +1980,19 @@ components:
         shippingFee:
           type: number
           format: float
-          description: Ongkir dummy hasil perhitungan checkout.
+          description: Ongkir dummy hasil perhitungan checkout. Untuk PICKUP selalu 0.
         grandTotal:
           type: number
           format: float
           description: itemsSubtotal ditambah shippingFee.
+        totalCost:
+          type: number
+          format: float
+          description: Total modal seluruh item order.
+        grossProfit:
+          type: number
+          format: float
+          description: grandTotal dikurangi totalCost.
         notes:
           type: string
           nullable: true
@@ -1908,12 +2030,68 @@ components:
         data:
           $ref: "#/components/schemas/Order"
 
+    OrderPickupResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success create pickup order
+        data:
+          $ref: "#/components/schemas/Order"
+
+    OrderDetailResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get order
+        data:
+          $ref: "#/components/schemas/Order"
+
+    OrderCancelResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success cancel order
+        data:
+          $ref: "#/components/schemas/Order"
+
+    OrderStatusUpdateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success update order status
+        data:
+          $ref: "#/components/schemas/Order"
+
+    OrderPaymentStatusUpdateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success update payment status
+        data:
+          $ref: "#/components/schemas/Order"
+
     OrderListResponse:
       type: object
       properties:
         message:
           type: string
           example: Success get orders
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+
+    OrderAdminListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get all orders
         data:
           type: array
           items:

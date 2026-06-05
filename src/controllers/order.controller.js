@@ -1,6 +1,7 @@
 import {
   cancelMyOrderService,
   createOrderService,
+  createPickupOrderService,
   getAllOrdersService,
   getMyOrderByIdService,
   getMyOrdersService,
@@ -15,6 +16,19 @@ export async function createOrderController(req, res, next) {
 
     return res.status(201).json({
       message: "Success create order",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createPickupOrderController(req, res, next) {
+  try {
+    const result = await createPickupOrderService(req.user.id, req.body);
+
+    return res.status(201).json({
+      message: "Success create pickup order",
       data: result,
     });
   } catch (error) {
