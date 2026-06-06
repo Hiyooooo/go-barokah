@@ -776,7 +776,11 @@ paths:
       tags:
         - Orders
       summary: Ambil daftar order milik pengguna
-      description: Mengambil daftar order milik pengguna yang sedang login. Bisa difilter berdasarkan status dan payment_status.
+      description: >
+        Mengambil daftar order milik pengguna yang sedang login. Bisa difilter
+        berdasarkan status, payment_status, dan fulfillment_method. Jika query
+        page, limit, atau per_page dikirim, response akan menyertakan meta
+        pagination.
       security:
         - bearerAuth: []
       parameters:
@@ -792,6 +796,40 @@ paths:
           schema:
             $ref: "#/components/schemas/PaymentStatus"
           example: UNPAID
+        - name: fulfillment_method
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/FulfillmentMethod"
+          example: DELIVERY
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Nomor halaman history order. Jika dikirim, response menyertakan meta pagination.
+          example: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          description: Jumlah order per halaman. Maksimal 50.
+          example: 10
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          description: Alias untuk limit.
+          example: 10
       responses:
         "200":
           description: Daftar order milik pengguna.
@@ -2085,6 +2123,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Order"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
 
     OrderAdminListResponse:
       type: object
@@ -2096,3 +2136,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Order"
+
+    PaginationMeta:
+      type: object
+      description: Muncul pada response list jika request memakai query page, limit, atau per_page.
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          example: 10
+        total:
+          type: integer
+          minimum: 0
+          example: 25
+        totalPages:
+          type: integer
+          minimum: 0
+          example: 3
