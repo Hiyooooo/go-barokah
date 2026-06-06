@@ -22,6 +22,10 @@ const ORDER_STATUSES = [
 ];
 
 const PAYMENT_STATUSES = ["UNPAID", "PAID", "FAILED", "REFUNDED"];
+const FULFILLMENT_METHODS = ["DELIVERY", "PICKUP"];
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
 
 const ORDER_STATUS_TRANSITIONS = {
   PENDING: ["PROCESSING", "CANCELLED"],
@@ -164,6 +168,50 @@ function assertValidPaymentStatus(paymentStatus) {
   }
 }
 
+function assertValidFulfillmentMethod(fulfillmentMethod) {
+  if (!FULFILLMENT_METHODS.includes(fulfillmentMethod)) {
+    throw badRequest("Invalid fulfillment method");
+  }
+}
+
+function normalizeOptionalStatus(value, validator) {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = String(value).trim().toUpperCase();
+  validator(normalized);
+
+  return normalized;
+}
+
+function buildOptionalPagination(filters = {}) {
+  const hasPagination =
+    filters.page !== undefined ||
+    filters.limit !== undefined ||
+    filters.per_page !== undefined;
+
+  if (!hasPagination) {
+    return null;
+  }
+
+  const page = parsePositiveInt(filters.page ?? DEFAULT_PAGE, "page");
+  const take = parsePositiveInt(
+    filters.limit ?? filters.per_page ?? DEFAULT_LIMIT,
+    "limit",
+  );
+
+  if (take > MAX_LIMIT) {
+    throw badRequest(`limit must be less than or equal to ${MAX_LIMIT}`);
+  }
+
+  return {
+    page,
+    take,
+    skip: (page - 1) * take,
+  };
+}
+
 function assertValidOrderTransition(currentStatus, nextStatus) {
   const allowedStatuses = ORDER_STATUS_TRANSITIONS[currentStatus] ?? [];
 
@@ -269,12 +317,36 @@ export async function createPickupOrderService(userId, payload = {}) {
 }
 
 export async function getMyOrdersService(userId, filters = {}) {
-  return await findOrderByUserId(userId, {
-    status: filters.status ? String(filters.status).toUpperCase() : undefined,
-    payment_status: filters.payment_status
-      ? String(filters.payment_status).toUpperCase()
-      : undefined,
+  const pagination = buildOptionalPagination(filters);
+  const result = await findOrderByUserId(userId, {
+    status: normalizeOptionalStatus(
+      filters.status,
+      assertValidOrderStatus,
+    ),
+    payment_status: normalizeOptionalStatus(
+      filters.payment_status,
+      assertValidPaymentStatus,
+    ),
+    fulfillment_method: normalizeOptionalStatus(
+      filters.fulfillment_method,
+      assertValidFulfillmentMethod,
+    ),
+    pagination,
   });
+
+  if (!pagination) {
+    return result;
+  }
+
+  return {
+    data: result.orders,
+    meta: {
+      page: pagination.page,
+      limit: pagination.take,
+      total: result.total,
+      totalPages: Math.ceil(result.total / pagination.take),
+    },
+  };
 }
 
 export async function getMyOrderByIdService(userId, id) {

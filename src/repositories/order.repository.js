@@ -94,18 +94,33 @@ export async function createOrderFromCart({
 }
 
 export async function findOrderByUserId(userId, filters = {}) {
-  const { status, payment_status } = filters;
+  const { status, payment_status, fulfillment_method, pagination } = filters;
+  const where = {
+    userId,
+    ...(status && { status }),
+    ...(payment_status && { paymentStatus: payment_status }),
+    ...(fulfillment_method && { fulfillmentMethod: fulfillment_method }),
+  };
+
+  if (pagination) {
+    const [orders, total] = await prisma.$transaction([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.take,
+        include: orderInclude,
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return { orders, total };
+  }
 
   return await prisma.order.findMany({
-    where: {
-      userId,
-      ...(status && { status }),
-      ...(payment_status && { paymentStatus: payment_status }),
-    },
+    where,
     orderBy: { createdAt: "desc" },
-    include: {
-      items: true,
-    },
+    include: orderInclude,
   });
 }
 
