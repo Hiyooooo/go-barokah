@@ -35,6 +35,9 @@ model Address {
   recipientName  String  @map("recipient_name") @db.VarChar(255)
   recipientPhone String  @map("recipient_phone") @db.VarChar(20)
   addressDetail  String  @map("address_detail") @db.Text
+  courierNote    String? @map("courier_note") @db.Text
+  latitude       Float?
+  longitude      Float?
   isDefault      Boolean @default(false) @map("is_default")
 
   createdAt DateTime @default(now()) @map("created_at")
