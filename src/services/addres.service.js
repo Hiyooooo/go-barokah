@@ -12,6 +12,7 @@ import {
   notFound,
   parsePositiveInt,
 } from "../utils/index.js";
+import { normalizeAddressCoordinates } from "./shipping.service.js";
 
 function normalizeBoolean(value) {
   if (typeof value === "boolean") return value;
@@ -28,6 +29,19 @@ function parseAddressId(id) {
   return parsePositiveInt(id, "address id");
 }
 
+export function normalizeAddressCoordinateDraft(payload = {}, options = {}) {
+  return normalizeAddressCoordinates(payload, options);
+}
+
+function normalizeCourierNote(value) {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
 export async function getAllAdressService(userId) {
   return await getAllAddress(userId);
 }
@@ -36,16 +50,26 @@ export async function getAddressByIdService(id, userId) {
   const parsedId = parseAddressId(id);
   const existing = await findAddressById(parsedId, userId);
   if (!existing) {
-    throw notFound("Product not found");
+    throw notFound("Address not found");
   }
 
   return existing;
 }
 
 export async function createAddressService(userId, payload) {
-  const { label, recipient_name, recipient_phone, address_detail, is_default } =
-    payload;
+  const {
+    label,
+    recipient_name,
+    recipient_phone,
+    address_detail,
+    courier_note,
+    is_default,
+  } = payload;
   const parsedIsDefault = normalizeBoolean(is_default);
+  const coordinates = normalizeAddressCoordinateDraft(payload, {
+    required: true,
+  });
+  const normalizedCourierNote = normalizeCourierNote(courier_note);
 
   if (!label || !recipient_name || !recipient_phone || !address_detail) {
     throw badRequest(
@@ -67,6 +91,9 @@ export async function createAddressService(userId, payload) {
     recipient_name,
     recipient_phone,
     address_detail,
+    courier_note: normalizedCourierNote,
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
     is_default: parsedIsDefault ?? false,
   };
 
@@ -80,9 +107,17 @@ export async function updateAddressService(id, userId, payload) {
     throw notFound("Address not found");
   }
 
-  const { label, recipient_name, recipient_phone, address_detail, is_default } =
-    payload;
+  const {
+    label,
+    recipient_name,
+    recipient_phone,
+    address_detail,
+    courier_note,
+    is_default,
+  } = payload;
   const parsedIsDefault = normalizeBoolean(is_default);
+  const coordinates = normalizeAddressCoordinateDraft(payload);
+  const normalizedCourierNote = normalizeCourierNote(courier_note);
 
   if (is_default !== undefined && parsedIsDefault === undefined) {
     throw badRequest("is_default must be boolean");
@@ -97,6 +132,11 @@ export async function updateAddressService(id, userId, payload) {
     ...(recipient_name !== undefined && { recipient_name }),
     ...(recipient_phone !== undefined && { recipient_phone }),
     ...(address_detail !== undefined && { address_detail }),
+    ...(courier_note !== undefined && { courier_note: normalizedCourierNote }),
+    ...(coordinates.latitude !== undefined && { latitude: coordinates.latitude }),
+    ...(coordinates.longitude !== undefined && {
+      longitude: coordinates.longitude,
+    }),
     ...(parsedIsDefault !== undefined && { is_default: parsedIsDefault }),
   };
 

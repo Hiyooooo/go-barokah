@@ -29,6 +29,11 @@ export async function createAddress(data) {
         recipientName: data.recipient_name,
         recipientPhone: data.recipient_phone,
         addressDetail: data.address_detail,
+        ...(data.courier_note !== undefined && {
+          courierNote: data.courier_note,
+        }),
+        ...(data.latitude !== undefined && { latitude: data.latitude }),
+        ...(data.longitude !== undefined && { longitude: data.longitude }),
         isDefault: data.is_default ?? false,
       },
     });
@@ -59,6 +64,15 @@ export async function updateAddress(id, userId, data) {
         }),
         ...(data.address_detail !== undefined && {
           addressDetail: data.address_detail,
+        }),
+        ...(data.courier_note !== undefined && {
+          courierNote: data.courier_note,
+        }),
+        ...(data.latitude !== undefined && {
+          latitude: data.latitude,
+        }),
+        ...(data.longitude !== undefined && {
+          longitude: data.longitude,
         }),
         ...(data.is_default !== undefined && { isDefault: data.is_default }),
       },

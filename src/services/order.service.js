@@ -11,6 +11,7 @@ import {
   updateOrderStatus,
 } from "../repositories/order.repository.js";
 import { findUserById } from "../repositories/user.repository.js";
+import { buildDeliveryShippingSummary } from "./shipping.service.js";
 import { badRequest, notFound, parsePositiveInt } from "../utils/index.js";
 
 const ORDER_STATUSES = [
@@ -46,14 +47,6 @@ function calculateFinalUnitPrice(price, discountAmount) {
   const finalPrice = price - (price * discountAmount) / 100;
 
   return Math.round(finalPrice);
-}
-
-function calculateDummyShippingFee({ itemsSubtotal }) {
-  if (itemsSubtotal >= 200000) {
-    return 0;
-  }
-
-  return 10000;
 }
 
 function generateOrderNumber() {
@@ -141,18 +134,25 @@ function buildCheckoutTotals(items, options = {}) {
     },
   );
 
-  const shippingFee =
-    options.fulfillmentMethod === "PICKUP"
-      ? 0
-      : calculateDummyShippingFee({
-          itemsSubtotal: baseTotals.itemsSubtotal,
-          totalQuantity: baseTotals.totalQuantity,
-        });
+  if (options.fulfillmentMethod === "PICKUP") {
+    return {
+      ...baseTotals,
+      shippingFee: 0,
+      grandTotal: baseTotals.itemsSubtotal,
+      distanceKm: 0,
+    };
+  }
+
+  const shippingSummary = buildDeliveryShippingSummary({
+    itemsSubtotal: baseTotals.itemsSubtotal,
+    address: options.address,
+  });
 
   return {
     ...baseTotals,
-    shippingFee,
-    grandTotal: baseTotals.itemsSubtotal + shippingFee,
+    shippingFee: shippingSummary.shippingFee,
+    grandTotal: shippingSummary.grandTotal,
+    distanceKm: shippingSummary.distanceKm,
   };
 }
 
@@ -247,7 +247,10 @@ export async function createOrderService(userId, payload = {}) {
   }
 
   const items = buildCheckoutItems(cart.items);
-  const totals = buildCheckoutTotals(items);
+  const totals = buildCheckoutTotals(items, {
+    fulfillmentMethod: "DELIVERY",
+    address,
+  });
   const orderNumber = generateOrderNumber();
 
   try {

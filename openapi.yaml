@@ -219,6 +219,9 @@ paths:
               recipient_name: Budi Santoso
               recipient_phone: "081234567890"
               address_detail: Jl. Contoh No. 1
+              courier_note: Pagar warna hitam, titip ke satpam jika tidak ada orang
+              latitude: -7.9666
+              longitude: 112.6326
               is_default: true
       responses:
         "201":
@@ -270,6 +273,9 @@ paths:
               $ref: "#/components/schemas/AddressUpdateRequest"
             example:
               label: Kantor
+              courier_note: Antar ke resepsionis lantai 1
+              latitude: -7.969
+              longitude: 112.6312
               is_default: false
       responses:
         "200":
@@ -743,8 +749,9 @@ paths:
       description: >
         Membuat order dari isi cart pengguna yang sedang login. Backend akan
         mengambil alamat berdasarkan address_id, menghitung subtotal barang,
-        menghitung dummy shipping fee, membuat order dan order item, mengurangi
-        stok produk, lalu mengosongkan cart.
+        menghitung ongkir berdasarkan jarak alamat ke toko, membuat order dan
+        order item, mengurangi stok produk, lalu mengosongkan cart. Alamat
+        delivery harus sudah memiliki koordinat latitude dan longitude.
       security:
         - bearerAuth: []
       requestBody:
@@ -1447,6 +1454,21 @@ components:
           example: "081234567890"
         address_detail:
           type: string
+        courier_note:
+          type: string
+          nullable: true
+          description: Catatan tambahan untuk kurir, misalnya patokan rumah atau instruksi titip paket.
+          example: Pagar hijau, rumah kedua dari pojok
+        latitude:
+          type: number
+          format: float
+          description: Koordinat latitude alamat dari peta.
+          example: -7.9666
+        longitude:
+          type: number
+          format: float
+          description: Koordinat longitude alamat dari peta.
+          example: 112.6326
         is_default:
           type: boolean
           default: false
@@ -1455,6 +1477,8 @@ components:
         - recipient_name
         - recipient_phone
         - address_detail
+        - latitude
+        - longitude
 
     AddressUpdateRequest:
       type: object
@@ -1468,6 +1492,21 @@ components:
           example: "081234567890"
         address_detail:
           type: string
+        courier_note:
+          type: string
+          nullable: true
+          description: Catatan tambahan untuk kurir.
+          example: Titip ke tetangga sebelah jika rumah kosong
+        latitude:
+          type: number
+          format: float
+          description: Koordinat latitude alamat dari peta.
+          example: -7.9666
+        longitude:
+          type: number
+          format: float
+          description: Koordinat longitude alamat dari peta.
+          example: 112.6326
         is_default:
           type: boolean
 
@@ -1487,6 +1526,17 @@ components:
           type: string
         addressDetail:
           type: string
+        courierNote:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: float
+          nullable: true
+        longitude:
+          type: number
+          format: float
+          nullable: true
         isDefault:
           type: boolean
         createdAt:
