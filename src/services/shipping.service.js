@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { badRequest, parseNumber } from "../utils/index.js";
 
 export const SHIPPING_DISTANCE_RULES = {
