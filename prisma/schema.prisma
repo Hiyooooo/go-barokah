@@ -166,6 +166,11 @@ model Order {
 
   notes String? @db.Text
 
+  snapToken          String?   @map("snap_token")            @db.Text
+  paymentUrl         String?   @map("payment_url")           @db.VarChar(500)
+  midtransOrderId    String?   @unique @map("midtrans_order_id") @db.VarChar(150)
+  snapTokenCreatedAt DateTime? @map("snap_token_created_at")
+
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   paidAt      DateTime? @map("paid_at")

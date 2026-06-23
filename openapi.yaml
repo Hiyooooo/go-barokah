@@ -29,6 +29,10 @@ tags:
     description: Checkout cart menjadi order dan riwayat order milik pengguna.
   - name: Admin Orders
     description: Operasional order untuk admin. Owner dapat mengakses jika masuk ke halaman admin.
+  - name: Payments
+    description: >
+      Inisiasi pembayaran order (DELIVERY only) dan penerimaan webhook notifikasi
+      dari Midtrans Payment Gateway.
 
 paths:
   /api/:
@@ -988,6 +992,131 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/orders/{id}/pay:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+
+    post:
+      tags:
+        - Payments
+      summary: Inisiasi pembayaran order
+      description: >
+        Meminta snap_token dari Midtrans untuk order milik pengguna yang sedang login.
+        Hanya berlaku untuk order dengan fulfillmentMethod DELIVERY.
+        Jika snap_token yang ada di DB masih valid (< 24 jam), token lama dikembalikan
+        tanpa hit Midtrans API lagi. Jika sudah expired, token baru di-request dan
+        disimpan ke DB. Gunakan snap_token yang diterima untuk menampilkan
+        popup pembayaran Midtrans Snap di frontend.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Token pembayaran berhasil didapatkan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitiatePaymentResponse"
+              example:
+                message: Berhasil mendapatkan token pembayaran
+                data:
+                  snap_token: "abc123token-xyz..."
+                  payment_url: "https://app.sandbox.midtrans.com/snap/v3/redirection/abc123token-xyz"
+                  order_number: "ORD-20260624-1780000000000-4321"
+                  grand_total: 152000
+        "400":
+          description: |
+            Permintaan tidak valid. Kemungkinan penyebab:
+            - Order menggunakan metode PICKUP (tidak perlu pembayaran online)
+            - Order sudah dibayar (paymentStatus = PAID)
+            - Order sudah dibatalkan (status = CANCELLED)
+            - Status pembayaran gagal (paymentStatus = FAILED)
+            - Layanan Midtrans sedang tidak tersedia
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: Order dengan metode PICKUP tidak memerlukan pembayaran online
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/payments/midtrans/notification:
+    post:
+      tags:
+        - Payments
+      summary: Webhook notifikasi Midtrans
+      description: >
+        Endpoint ini dipanggil secara otomatis oleh server Midtrans setiap kali
+        status transaksi berubah. Endpoint ini TIDAK memerlukan JWT — diproteksi
+        melalui verifikasi signature key SHA512.
+
+
+        Midtrans dapat mengirim notifikasi lebih dari sekali untuk transaksi yang
+        sama (idempotent). Server selalu merespons HTTP 200 agar Midtrans tidak
+        melakukan retry.
+
+
+        **Mapping status:**
+
+        | transaction_status | fraud_status | Aksi Backend |
+        |---|---|---|
+        | settlement | - | paymentStatus = PAID, status = PROCESSING |
+        | capture | accept | paymentStatus = PAID, status = PROCESSING |
+        | capture | challenge | Tidak ada perubahan (menunggu review Midtrans) |
+        | pending | - | Tidak ada perubahan |
+        | deny / expire / cancel | - | paymentStatus = FAILED, status = CANCELLED, stok dikembalikan |
+
+
+        > **Catatan:** Endpoint ini tidak perlu dipanggil manual dari frontend.
+        > Midtrans memanggil endpoint ini secara otomatis di background.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MidtransNotificationRequest"
+            example:
+              order_id: "ORD-20260624-1780000000000-4321"
+              status_code: "200"
+              gross_amount: "152000.00"
+              transaction_status: "settlement"
+              fraud_status: "accept"
+              signature_key: "sha512_hash_dari_midtrans..."
+              payment_type: "gopay"
+              transaction_id: "abc-def-123-456"
+              transaction_time: "2026-06-24 06:00:00"
+              settlement_time: "2026-06-24 06:01:00"
+              currency: "IDR"
+      responses:
+        "200":
+          description: Notifikasi berhasil diproses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: OK
+        "403":
+          description: Signature key tidak valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: Invalid Midtrans signature
+        "404":
+          description: Order tidak ditemukan berdasarkan midtrans_order_id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: Order not found
 
   /api/admin/orders:
     get:
@@ -2084,6 +2213,25 @@ components:
         notes:
           type: string
           nullable: true
+        snapToken:
+          type: string
+          nullable: true
+          description: Snap token dari Midtrans untuk menampilkan popup pembayaran. Null jika belum pernah request payment atau PICKUP.
+        paymentUrl:
+          type: string
+          nullable: true
+          description: URL redirect Midtrans Snap. Null jika belum ada snap token.
+          example: "https://app.sandbox.midtrans.com/snap/v3/redirection/abc123"
+        midtransOrderId:
+          type: string
+          nullable: true
+          description: Order ID yang dikirim ke Midtrans. Pertama kali sama dengan orderNumber; saat retry token expired akan ditambahkan timestamp.
+          example: "ORD-20260624-1780000000000-4321"
+        snapTokenCreatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Waktu snap token dibuat. Dipakai untuk mengecek apakah token masih valid (< 24 jam).
         createdAt:
           type: string
           format: date-time
@@ -2208,3 +2356,98 @@ components:
           type: integer
           minimum: 0
           example: 3
+
+    InitiatePaymentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Berhasil mendapatkan token pembayaran
+        data:
+          type: object
+          properties:
+            snap_token:
+              type: string
+              description: Token Midtrans Snap yang digunakan di frontend untuk menampilkan popup pembayaran via window.snap.pay(token).
+              example: "abc123token-xyz..."
+            payment_url:
+              type: string
+              description: URL redirect Midtrans jika frontend tidak menggunakan Snap.js popup (fallback redirect).
+              example: "https://app.sandbox.midtrans.com/snap/v3/redirection/abc123token-xyz"
+            order_number:
+              type: string
+              description: Nomor order untuk ditampilkan di UI.
+              example: "ORD-20260624-1780000000000-4321"
+            grand_total:
+              type: number
+              format: float
+              description: Total yang harus dibayar. Gunakan ini untuk menampilkan nominal di UI sebelum popup Midtrans muncul.
+              example: 152000
+
+    MidtransNotificationRequest:
+      type: object
+      description: Payload webhook yang dikirim oleh server Midtrans. Tidak perlu dibuat manual — ini adalah dokumentasi untuk referensi.
+      properties:
+        order_id:
+          type: string
+          description: midtransOrderId yang disimpan di DB (sama dengan orderNumber atau orderNumber-timestamp saat retry).
+          example: "ORD-20260624-1780000000000-4321"
+        status_code:
+          type: string
+          description: Kode status HTTP dari transaksi Midtrans.
+          example: "200"
+        gross_amount:
+          type: string
+          description: Total pembayaran dalam bentuk string desimal.
+          example: "152000.00"
+        transaction_status:
+          type: string
+          enum:
+            - settlement
+            - capture
+            - pending
+            - deny
+            - expire
+            - cancel
+          example: settlement
+        fraud_status:
+          type: string
+          nullable: true
+          enum:
+            - accept
+            - challenge
+            - deny
+          description: Status fraud detection. Relevan saat transaction_status = capture.
+          example: accept
+        signature_key:
+          type: string
+          description: |
+            Hash SHA512 untuk verifikasi keaslian notifikasi. Dihitung dengan:
+            SHA512(order_id + status_code + gross_amount + MIDTRANS_SERVER_KEY)
+          example: "d1312a11e44bb74903982f5aad0e967a0b93b97fa553..."
+        payment_type:
+          type: string
+          description: Metode pembayaran yang digunakan.
+          example: "gopay"
+        transaction_id:
+          type: string
+          description: ID unik transaksi dari Midtrans.
+          example: "513f1f01-c9da-474c-9fc9-d5c64364b709"
+        transaction_time:
+          type: string
+          description: Waktu transaksi dibuat di Midtrans.
+          example: "2026-06-24 06:00:00"
+        settlement_time:
+          type: string
+          nullable: true
+          description: Waktu settlement (hanya ada jika transaction_status = settlement).
+          example: "2026-06-24 06:01:00"
+        currency:
+          type: string
+          example: "IDR"
+      required:
+        - order_id
+        - status_code
+        - gross_amount
+        - signature_key
+        - transaction_status

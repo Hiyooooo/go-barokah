@@ -206,3 +206,23 @@ export async function updateOrderPaymentStatus(id, data) {
     include: orderInclude,
   });
 }
+
+export async function updateOrderPaymentToken(id, data) {
+  return await prisma.order.update({
+    where: { id },
+    data: {
+      snapToken: data.snapToken,
+      paymentUrl: data.paymentUrl,
+      midtransOrderId: data.midtransOrderId,
+      snapTokenCreatedAt: data.snapTokenCreatedAt,
+    },
+    include: orderInclude,
+  });
+}
+
+export async function findOrderByMidtransOrderId(midtransOrderId) {
+  return await prisma.order.findUnique({
+    where: { midtransOrderId },
+    include: orderInclude,
+  });
+}
