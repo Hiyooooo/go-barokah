@@ -11,6 +11,7 @@ import typeRoute from "./routes/type.route.js";
 import orderRoute from "./routes/order.route.js";
 import ownerOrderRoute from "./routes/admin-order.route.js";
 import userRoute from "./routes/user.route.js";
+import paymentRoute from "./routes/payment.route.js";
 import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
@@ -57,6 +58,7 @@ app.use("/api/carts", cartRoute);
 app.use("/api/orders", orderRoute);
 app.use("/api/admin/orders", ownerOrderRoute);
 app.use("/api/users", userRoute);
+app.use("/api/payments", paymentRoute);
 
 app.get("/me", authRequired, (req, res) => {
   res.json({ message: "Protected route", user: req.user });
