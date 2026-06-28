@@ -103,6 +103,10 @@ function buildCheckoutItems(cartItems) {
     const subtotal = finalUnitPrice * quantity;
     const discountSubtotal = normalSubtotal - subtotal;
 
+    const unitCost = Number(product.cost ?? 0);
+    const totalCost = unitCost * quantity;
+    const grossProfit = (finalUnitPrice - unitCost) * quantity;
+
     return {
       productId: product.id,
       productName: product.name,
@@ -114,6 +118,9 @@ function buildCheckoutItems(cartItems) {
       normalSubtotal,
       discountSubtotal,
       subtotal,
+      unitCost,
+      totalCost,
+      grossProfit,
     };
   });
 }

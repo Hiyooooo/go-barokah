@@ -135,6 +135,11 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     );
   }
 
+  const { cost } = payload;
+  if (cost !== undefined) {
+    data.cost = parseNonNegativeNumber(cost, "cost");
+  }
+
   return data;
 }
 

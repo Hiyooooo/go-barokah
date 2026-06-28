@@ -23,6 +23,7 @@ export async function createProduct(data) {
     data: {
       name: data.name,
       price: data.price,
+      cost: data.cost ?? 0,
       description: data.description,
       categoryId: data.category_id,
       typeId: data.type_id,
@@ -40,6 +41,7 @@ export async function updateProduct(id, data) {
     data: {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.price !== undefined && { price: data.price }),
+      ...(data.cost !== undefined && { cost: data.cost }),
       ...(data.description !== undefined && { description: data.description }),
       ...(data.category_id !== undefined && { categoryId: data.category_id }),
       ...(data.type_id !== undefined && { typeId: data.type_id }),

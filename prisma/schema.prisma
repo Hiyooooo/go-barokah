@@ -71,6 +71,7 @@ model Product {
   categoryId      Int      @map("category_id")
   typeId          Int      @map("type_id")
   price           Float
+  cost            Float    @default(0)                   // HPP (Harga Pokok Penjualan) per unit
   description     String   @db.Text
   image_url       String   @db.VarChar(255)
   stock           Int
@@ -218,4 +219,21 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  // Kategori pengeluaran: SALARY | RENT | UTILITIES | DEPRECIATION | TAX | OTHER
+  category    String   @db.VarChar(100)
+  description String   @db.VarChar(255)
+  amount      Float
+  // Tanggal biaya dikeluarkan (bukan createdAt)
+  date        DateTime @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([date])
+  @@index([category])
+  @@map("expenses")
 }
