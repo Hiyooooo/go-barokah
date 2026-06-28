@@ -33,8 +33,312 @@ tags:
     description: >
       Inisiasi pembayaran order (DELIVERY only) dan penerimaan webhook notifikasi
       dari Midtrans Payment Gateway.
+  - name: Expenses
+    description: Manajemen pengeluaran operasional toko (gaji, sewa, listrik, pajak, dll). Hanya admin atau owner.
+  - name: Analytics
+    description: Analisis keuangan toko berdasarkan rentang tanggal. Hanya admin atau owner.
 
 paths:
+  /api/admin/expenses:
+    post:
+      tags:
+        - Expenses
+      summary: Tambah pengeluaran baru
+      description: Mencatat pengeluaran operasional baru (gaji, sewa, listrik, pajak, dll).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseRequest"
+            example:
+              category: SALARY
+              description: Gaji karyawan bulan Juni 2025
+              amount: 3000000
+              date: "2025-06-30"
+      responses:
+        "201":
+          description: Pengeluaran berhasil ditambahkan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      tags:
+        - Expenses
+      summary: Ambil semua pengeluaran
+      description: Mengambil daftar pengeluaran dengan filter opsional berdasarkan rentang tanggal dan kategori.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal awal filter (YYYY-MM-DD). Inklusif.
+          example: "2025-06-01"
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal akhir filter (YYYY-MM-DD). Inklusif.
+          example: "2025-06-30"
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [SALARY, RENT, UTILITIES, DEPRECIATION, TAX, OTHER]
+          description: Filter berdasarkan kategori pengeluaran.
+          example: SALARY
+      responses:
+        "200":
+          description: Daftar pengeluaran berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Expenses retrieved successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Expense"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/expenses/{id}:
+    get:
+      tags:
+        - Expenses
+      summary: Ambil detail pengeluaran
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail pengeluaran berhasil diambil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Expenses
+      summary: Update pengeluaran
+      description: Partial update — hanya kirim field yang ingin diubah.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseRequest"
+            example:
+              amount: 3500000
+              description: Gaji karyawan Juni 2025 (revisi)
+      responses:
+        "200":
+          description: Pengeluaran berhasil diperbarui.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Expenses
+      summary: Hapus pengeluaran
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Pengeluaran berhasil dihapus.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/analytics/omzet:
+    get:
+      tags:
+        - Analytics
+      summary: Lihat omzet
+      description: |
+        Mengambil total omzet dari order yang sudah PAID dalam rentang tanggal yang dipilih.
+        Omzet dihitung dari `itemsSubtotal` (tidak termasuk ongkos kirim).
+        Juga menampilkan rincian omzet per produk diurutkan dari yang terbesar.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+      responses:
+        "200":
+          description: Data omzet berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Omzet data retrieved successfully
+                  data:
+                    $ref: "#/components/schemas/OmzetResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/analytics/net-profit:
+    get:
+      tags:
+        - Analytics
+      summary: Lihat laba bersih (3 saringan)
+      description: |
+        Menghitung laba bersih melalui 3 saringan berurutan:
+        - **Saringan 1 — Laba Kotor**: Omzet − HPP (modal barang dari `product.cost`)
+        - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER)
+        - **Saringan 3 — Laba Bersih**: Laba Operasional − Pajak (kategori TAX)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+      responses:
+        "200":
+          description: Data laba bersih berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Net profit data retrieved successfully
+                  data:
+                    $ref: "#/components/schemas/NetProfitResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/analytics/cash-flow:
+    get:
+      tags:
+        - Analytics
+      summary: Lihat arus kas operasi
+      description: |
+        Menghitung arus kas operasi dalam periode yang dipilih:
+        - **Uang Masuk**: Total `grandTotal` dari order PAID (termasuk ongkos kirim)
+        - **Uang Keluar**: HPP (modal barang) + semua pengeluaran yang tercatat
+        - **Arus Kas Bersih**: Uang Masuk − Uang Keluar
+        - **Status**: `POSITIVE` (positif), `BREAK_EVEN` (impas), atau `NEGATIVE` (negatif)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+      responses:
+        "200":
+          description: Data arus kas berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cash flow data retrieved successfully
+                  data:
+                    $ref: "#/components/schemas/CashFlowResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/analytics/cost-analysis:
+    get:
+      tags:
+        - Analytics
+      summary: Lihat analisis biaya
+      description: |
+        Menampilkan rincian lengkap semua pengeluaran dalam rentang tanggal yang dipilih:
+        - Total biaya dan rata-rata per bulan
+        - Rincian per kategori beserta persentase kontribusinya
+        - Data tren bulanan untuk keperluan grafik
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+      responses:
+        "200":
+          description: Data analisis biaya berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cost analysis data retrieved successfully
+                  data:
+                    $ref: "#/components/schemas/CostAnalysisResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/:
     get:
       tags:
@@ -1332,6 +1636,32 @@ components:
         type: integer
         minimum: 1
       example: 1
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    StartDateParam:
+      name: startDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Start date of the analysis period (YYYY-MM-DD). Inclusive.
+      example: "2025-06-01"
+    EndDateParam:
+      name: endDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+      description: End date of the analysis period (YYYY-MM-DD). Inclusive.
+      example: "2025-06-30"
 
   responses:
     BadRequest:
@@ -2451,3 +2781,275 @@ components:
         - gross_amount
         - signature_key
         - transaction_status
+
+    # ── Expense ──────────────────────────────────────────────────────────────
+
+    ExpenseCategory:
+      type: string
+      enum: [SALARY, RENT, UTILITIES, DEPRECIATION, TAX, OTHER]
+      example: SALARY
+
+    ExpenseRequest:
+      type: object
+      properties:
+        category:
+          $ref: "#/components/schemas/ExpenseCategory"
+        description:
+          type: string
+          example: Gaji karyawan bulan Juni 2025
+        amount:
+          type: number
+          minimum: 0
+          example: 3000000
+        date:
+          type: string
+          format: date
+          example: "2025-06-30"
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        category:
+          $ref: "#/components/schemas/ExpenseCategory"
+        description:
+          type: string
+          example: Gaji karyawan bulan Juni 2025
+        amount:
+          type: number
+          example: 3000000
+        date:
+          type: string
+          format: date
+          example: "2025-06-30"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ExpenseResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Pengeluaran berhasil ditambahkan
+        data:
+          $ref: "#/components/schemas/Expense"
+
+    # ── Analytics ─────────────────────────────────────────────────────────────
+
+    AnalyticsPeriod:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+          example: "2025-06-01"
+        end_date:
+          type: string
+          format: date
+          example: "2025-06-30"
+
+    OmzetResponse:
+      type: object
+      properties:
+        period:
+          $ref: "#/components/schemas/AnalyticsPeriod"
+        omzet:
+          type: number
+          description: Total omzet dari penjualan produk (itemsSubtotal), tidak termasuk ongkos kirim.
+          example: 15000000
+        total_discount:
+          type: number
+          description: Total diskon yang diberikan pada semua order PAID.
+          example: 500000
+        total_transactions:
+          type: integer
+          description: Jumlah order yang sudah PAID dalam periode tersebut.
+          example: 30
+        average_per_transaction:
+          type: number
+          description: Rata-rata omzet per transaksi (omzet dibagi jumlah transaksi).
+          example: 500000
+        per_product:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: integer
+                example: 1
+              product_name:
+                type: string
+                example: Kompor Gas
+              qty_sold:
+                type: integer
+                example: 50
+              revenue:
+                type: number
+                example: 5000000
+              cogs:
+                type: number
+                example: 3000000
+              gross_profit:
+                type: number
+                example: 2000000
+
+    NetProfitResponse:
+      type: object
+      properties:
+        period:
+          $ref: "#/components/schemas/AnalyticsPeriod"
+        omzet:
+          type: number
+          example: 150000000
+        cogs:
+          type: number
+          description: HPP (modal barang) — jumlah product.cost × qty dari order PAID.
+          example: 95000000
+        filter_1:
+          type: object
+          description: "Saringan 1: Laba Kotor = Omzet - HPP"
+          properties:
+            label:
+              type: string
+              example: Gross Profit
+            value:
+              type: number
+              example: 55000000
+            margin_percent:
+              type: number
+              example: 36.67
+        operating_expenses:
+          type: object
+          properties:
+            total:
+              type: number
+              example: 21000000
+            breakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  category:
+                    $ref: "#/components/schemas/ExpenseCategory"
+                  amount:
+                    type: number
+                    example: 12000000
+        filter_2:
+          type: object
+          description: "Saringan 2: Laba Operasional = Laba Kotor - Biaya Operasional"
+          properties:
+            label:
+              type: string
+              example: Operating Profit
+            value:
+              type: number
+              example: 34000000
+        tax:
+          type: number
+          description: Total pajak (kategori TAX).
+          example: 1000000
+        filter_3:
+          type: object
+          description: "Saringan 3: Laba Bersih = Laba Operasional - Pajak"
+          properties:
+            label:
+              type: string
+              example: Net Profit
+            value:
+              type: number
+              example: 33000000
+            margin_percent:
+              type: number
+              example: 22.0
+
+    CashFlowResponse:
+      type: object
+      properties:
+        period:
+          $ref: "#/components/schemas/AnalyticsPeriod"
+        cash_in:
+          type: object
+          properties:
+            total:
+              type: number
+              description: Total uang masuk (grandTotal termasuk ongkos kirim).
+              example: 55000000
+            breakdown:
+              type: object
+              properties:
+                product_sales:
+                  type: number
+                  example: 50000000
+                shipping_fee_received:
+                  type: number
+                  example: 5000000
+        cash_out:
+          type: object
+          properties:
+            total:
+              type: number
+              description: Total uang keluar (HPP + semua pengeluaran).
+              example: 40000000
+            breakdown:
+              type: object
+              properties:
+                cogs:
+                  type: number
+                  example: 30000000
+                operating_expenses:
+                  type: number
+                  example: 10000000
+        net_cash_flow:
+          type: number
+          description: Selisih uang masuk dikurangi uang keluar.
+          example: 15000000
+        status:
+          type: string
+          enum: [POSITIVE, BREAK_EVEN, NEGATIVE]
+          example: POSITIVE
+
+    CostAnalysisResponse:
+      type: object
+      properties:
+        period:
+          $ref: "#/components/schemas/AnalyticsPeriod"
+        total_cost:
+          type: number
+          description: Total seluruh pengeluaran dalam periode tersebut.
+          example: 21000000
+        monthly_average:
+          type: number
+          description: Total biaya dibagi jumlah bulan dalam rentang tanggal.
+          example: 21000000
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                $ref: "#/components/schemas/ExpenseCategory"
+              total:
+                type: number
+                example: 12000000
+              percent:
+                type: number
+                description: Persentase kontribusi kategori ini terhadap total biaya.
+                example: 57.14
+        monthly_trend:
+          type: array
+          items:
+            type: object
+            properties:
+              month:
+                type: string
+                description: Bulan dalam format YYYY-MM.
+                example: "2025-06"
+              total:
+                type: number
+                example: 21000000

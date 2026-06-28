@@ -26,6 +26,9 @@ export async function createOrderFromCart({
   notes,
 }) {
   return await prisma.$transaction(async (tx) => {
+    const orderTotalCost   = items.reduce((sum, i) => sum + (i.totalCost ?? 0), 0);
+    const orderGrossProfit = items.reduce((sum, i) => sum + (i.grossProfit ?? 0), 0);
+
     const order = await tx.order.create({
       data: {
         userId,
@@ -42,6 +45,8 @@ export async function createOrderFromCart({
         itemsSubtotal: totals.itemsSubtotal,
         shippingFee: totals.shippingFee,
         grandTotal: totals.grandTotal,
+        totalCost: orderTotalCost,
+        grossProfit: orderGrossProfit,
         notes,
         items: {
           create: items.map((item) => ({
@@ -56,6 +61,8 @@ export async function createOrderFromCart({
             discountSubtotal: item.discountSubtotal,
             subtotal: item.subtotal,
             unitCost: item.unitCost ?? 0,
+            totalCost: item.totalCost ?? 0,
+            grossProfit: item.grossProfit ?? 0,
           })),
         },
       },
