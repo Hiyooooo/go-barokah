@@ -10,9 +10,23 @@ import {
   updateOrderPaymentStatus,
   updateOrderStatus,
 } from "../repositories/order.repository.js";
+import { findLowStockProducts } from "../repositories/product.repository.js";
 import { findUserById } from "../repositories/user.repository.js";
 import { buildDeliveryShippingSummary } from "./shipping.service.js";
-import { badRequest, notFound, parsePositiveInt } from "../utils/index.js";
+import { badRequest, notFound, parsePositiveInt, sendLowStockAlertEmail } from "../utils/index.js";
+
+function checkAndNotifyLowStock() {
+  const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 10;
+  findLowStockProducts(threshold)
+    .then((products) => {
+      if (products.length > 0) {
+        sendLowStockAlertEmail({ products });
+      }
+    })
+    .catch((err) => {
+      console.error("[LowStock] Gagal mengecek stok produk:", err.message);
+    });
+}
 
 const ORDER_STATUSES = [
   "PENDING",
@@ -261,7 +275,7 @@ export async function createOrderService(userId, payload = {}) {
   const orderNumber = generateOrderNumber();
 
   try {
-    return await createOrderFromCart({
+    const order = await createOrderFromCart({
       userId,
       cartId: cart.id,
       address,
@@ -271,6 +285,12 @@ export async function createOrderService(userId, payload = {}) {
       totals,
       notes,
     });
+
+    // Cek & notifikasi stok menipis — fire-and-forget, tidak di-await
+    // Dijalankan SETELAH transaksi DB selesai, aman dari rollback
+    checkAndNotifyLowStock();
+
+    return order;
   } catch (error) {
     if (error.message?.startsWith("Insufficient stock")) {
       throw badRequest(error.message);
@@ -304,7 +324,7 @@ export async function createPickupOrderService(userId, payload = {}) {
   const orderNumber = generateOrderNumber();
 
   try {
-    return await createOrderFromCart({
+    const order = await createOrderFromCart({
       userId,
       cartId: cart.id,
       fulfillmentMethod: "PICKUP",
@@ -317,6 +337,10 @@ export async function createPickupOrderService(userId, payload = {}) {
       totals,
       notes,
     });
+
+    checkAndNotifyLowStock();
+
+    return order;
   } catch (error) {
     if (error.message?.startsWith("Insufficient stock")) {
       throw badRequest(error.message);

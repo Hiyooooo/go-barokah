@@ -60,3 +60,22 @@ export async function deleteProduct(id) {
     where: { id: id },
   });
 }
+
+export async function findLowStockProducts(threshold) {
+  return await prisma.product.findMany({
+    where: {
+      stock: {
+        lte: threshold,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      stock: true,
+      category: {
+        select: { name: true },
+      },
+    },
+    orderBy: { stock: "asc" },
+  });
+}
