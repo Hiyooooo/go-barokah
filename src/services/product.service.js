@@ -4,6 +4,7 @@ import {
   findProductById,
   getAllProducts,
   updateProduct,
+  findLowStockProducts,
 } from "../repositories/product.repository.js";
 import { findCategoryById } from "../repositories/category.repository.js";
 import { findTypeById } from "../repositories/type.repository.js";
@@ -18,6 +19,7 @@ import {
   parseNonNegativeInteger,
   parseNonNegativeNumber,
   parsePositiveInt,
+  sendLowStockAlertEmail,
 } from "../utils/index.js";
 
 function parseProductId(id) {
@@ -199,6 +201,19 @@ export async function updateProductService(id, payload) {
 
   if (data.image_url !== undefined && data.image_url !== existing.image_url) {
     await deletelocalUploadFile(existing.image_url);
+  }
+
+  if (data.stock !== undefined) {
+    const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 10;
+    findLowStockProducts(threshold)
+      .then((products) => {
+        if (products.length > 0) {
+          sendLowStockAlertEmail({ products });
+        }
+      })
+      .catch((err) => {
+        console.error("[LowStock] Gagal mengecek stok produk:", err.message);
+      });
   }
 
   const final_price = calculateFinalPrice(result.price, result.discount_amount);
