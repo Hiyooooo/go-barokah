@@ -37,6 +37,8 @@ tags:
     description: Manajemen pengeluaran operasional toko (gaji, sewa, listrik, pajak, dll). Hanya admin atau owner.
   - name: Analytics
     description: Analisis keuangan toko berdasarkan rentang tanggal. Hanya admin atau owner.
+  - name: Employee
+    description: Manajemen akun karyawan dan admin. Hanya owner.
 
 paths:
   /api/admin/expenses:
@@ -681,7 +683,14 @@ paths:
       tags:
         - Products
       summary: Update produk
-      description: Membutuhkan Bearer token dengan role admin atau owner. Gambar opsional; jika dikirim, gambar lama akan dihapus.
+      description: |
+        Membutuhkan Bearer token dengan role admin atau owner. Partial update —
+        hanya kirim field yang ingin diubah. Gambar opsional; jika dikirim,
+        gambar lama akan dihapus.
+
+        Jika field `stock` disertakan, sistem akan otomatis mengecek semua produk
+        dan mengirim email notifikasi ke admin jika ada yang stoknya di bawah
+        batas minimum (`LOW_STOCK_THRESHOLD`). Proses ini berjalan di background.
       security:
         - bearerAuth: []
       requestBody:
@@ -1054,12 +1063,17 @@ paths:
       tags:
         - Orders
       summary: Checkout cart menjadi order
-      description: >
+      description: |
         Membuat order dari isi cart pengguna yang sedang login. Backend akan
         mengambil alamat berdasarkan address_id, menghitung subtotal barang,
         menghitung ongkir berdasarkan jarak alamat ke toko, membuat order dan
         order item, mengurangi stok produk, lalu mengosongkan cart. Alamat
         delivery harus sudah memiliki koordinat latitude dan longitude.
+
+        Setelah order berhasil dibuat, sistem akan otomatis mengecek stok produk
+        dan mengirim email notifikasi ke admin jika ada produk yang stoknya di
+        bawah batas minimum (`LOW_STOCK_THRESHOLD`). Proses ini berjalan di
+        background dan tidak mempengaruhi response.
       security:
         - bearerAuth: []
       requestBody:
@@ -1162,11 +1176,16 @@ paths:
       tags:
         - Orders
       summary: Checkout cart menjadi order pickup
-      description: >
+      description: |
         Membuat order dari isi cart pengguna yang sedang login untuk pengambilan
         sendiri di toko. Backend akan menghitung subtotal barang, membuat order
         dan order item, mengurangi stok produk, mengosongkan cart, dan
         menetapkan shippingFee menjadi 0.
+
+        Setelah order berhasil dibuat, sistem akan otomatis mengecek stok produk
+        dan mengirim email notifikasi ke admin jika ada produk yang stoknya di
+        bawah batas minimum (`LOW_STOCK_THRESHOLD`). Proses ini berjalan di
+        background dan tidak mempengaruhi response.
       security:
         - bearerAuth: []
       requestBody:
@@ -1580,6 +1599,193 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/owner/employee/users:
+    get:
+      tags:
+        - Employee
+      summary: Ambil semua akun user
+      description: |
+        Mengambil daftar semua akun dengan role `user`.
+        Hanya dapat diakses oleh owner.
+        Response hanya menampilkan `name`, `email`, dan `role`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar akun user berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AccountSummary"
+              example:
+                message: Success get all user accounts
+                data:
+                  - name: Budi Santoso
+                    email: budi@example.com
+                    role: user
+                  - name: Ani Rahayu
+                    email: ani@example.com
+                    role: user
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/owner/employee/admins:
+    get:
+      tags:
+        - Employee
+      summary: Ambil semua akun admin
+      description: |
+        Mengambil daftar semua akun dengan role `admin`.
+        Hanya dapat diakses oleh owner.
+        Response hanya menampilkan `name`, `email`, dan `role`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar akun admin berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AccountSummary"
+              example:
+                message: Success get all admin accounts
+                data:
+                  - name: Dina Purnama
+                    email: dina@example.com
+                    role: admin
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/owner/employee/promote:
+    patch:
+      tags:
+        - Employee
+      summary: Promote user menjadi admin
+      description: |
+        Mengubah role akun dari `user` menjadi `admin`.
+        Hanya dapat diakses oleh owner.
+
+        Aturan validasi:
+        - Email harus berformat valid
+        - Akun dengan email tersebut harus terdaftar
+        - Akun belum berstatus `admin` (jika sudah admin, return 409)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeEmailRequest"
+            example:
+              email: budi@example.com
+      responses:
+        "200":
+          description: Akun berhasil dipromosikan menjadi admin.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/UserRecord"
+              example:
+                message: Successfully promoted account to admin
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  name: Budi Santoso
+                  email: budi@example.com
+                  role: admin
+                  phoneNumber: "081234567890"
+                  emailVerified: true
+                  createdAt: "2025-01-15T08:00:00.000Z"
+                  updatedAt: "2025-06-30T10:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/owner/employee/demote:
+    patch:
+      tags:
+        - Employee
+      summary: Demote admin menjadi user
+      description: |
+        Mengubah role akun dari `admin` menjadi `user`.
+        Hanya dapat diakses oleh owner.
+
+        Aturan validasi:
+        - Email harus berformat valid
+        - Akun dengan email tersebut harus terdaftar
+        - Akun harus berstatus `admin` (jika bukan admin, return 400)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeEmailRequest"
+            example:
+              email: dina@example.com
+      responses:
+        "200":
+          description: Akun berhasil diturunkan menjadi user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/UserRecord"
+              example:
+                message: Successfully demoted account to user
+                data:
+                  id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+                  name: Dina Purnama
+                  email: dina@example.com
+                  role: user
+                  phoneNumber: "082345678901"
+                  emailVerified: true
+                  createdAt: "2025-02-10T09:00:00.000Z"
+                  updatedAt: "2025-06-30T11:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1729,6 +1935,65 @@ components:
           type: string
       required:
         - message
+
+    AccountSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Budi Santoso
+        email:
+          type: string
+          format: email
+          example: budi@example.com
+        role:
+          type: string
+          enum: [user, admin, owner]
+          example: user
+
+    EmployeeEmailRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: budi@example.com
+
+    UserRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        name:
+          type: string
+          example: Budi Santoso
+        email:
+          type: string
+          format: email
+          example: budi@example.com
+        role:
+          type: string
+          enum: [user, admin, owner]
+          example: admin
+        phoneNumber:
+          type: string
+          nullable: true
+          example: "081234567890"
+        emailVerified:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T08:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-06-30T10:00:00.000Z"
 
     TokenUser:
       type: object
