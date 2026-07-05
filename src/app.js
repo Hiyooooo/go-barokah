@@ -14,6 +14,7 @@ import userRoute from "./routes/user.route.js";
 import paymentRoute from "./routes/payment.route.js";
 import expenseRoute from "./routes/expense.route.js";
 import analyticsRoute from "./routes/analytics.route.js";
+import employee from "./routes/employee.route.js"
 import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
@@ -63,6 +64,7 @@ app.use("/api/users", userRoute);
 app.use("/api/payments", paymentRoute);
 app.use("/api/owner/expenses", expenseRoute);
 app.use("/api/owner/analytics", analyticsRoute);
+app.use("/api/owner/employee", employee)
 
 app.get("/me", authRequired, (req, res) => {
   res.json({ message: "Protected route", user: req.user });
