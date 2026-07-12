@@ -78,19 +78,19 @@ export async function registerService({
 
 export async function loginService({ email, password }) {
   if (!email || !password) {
-    throw badRequest("Invalid username or password");
+    throw badRequest("Invalid email or password");
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
 
   const account = await findUserByEmail(normalizedEmail);
   if (!account) {
-    throw badRequest("Invalid username or password");
+    throw badRequest("Invalid email or password");
   }
 
   const ok = await comparePassword(password, account.password);
   if (!ok) {
-    throw badRequest("Invalid username or password");
+    throw badRequest("Invalid email or password");
   }
 
   if (!account.emailVerified) {
