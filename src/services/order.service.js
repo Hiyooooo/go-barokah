@@ -13,7 +13,12 @@ import {
 import { findLowStockProducts } from "../repositories/product.repository.js";
 import { findUserById } from "../repositories/user.repository.js";
 import { buildDeliveryShippingSummary } from "./shipping.service.js";
-import { badRequest, notFound, parsePositiveInt, sendLowStockAlertEmail } from "../utils/index.js";
+import {
+  badRequest,
+  notFound,
+  parsePositiveInt,
+  sendLowStockAlertEmail,
+} from "../utils/index.js";
 
 function checkAndNotifyLowStock() {
   const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 10;
@@ -286,8 +291,6 @@ export async function createOrderService(userId, payload = {}) {
       notes,
     });
 
-    // Cek & notifikasi stok menipis — fire-and-forget, tidak di-await
-    // Dijalankan SETELAH transaksi DB selesai, aman dari rollback
     checkAndNotifyLowStock();
 
     return order;
@@ -353,10 +356,7 @@ export async function createPickupOrderService(userId, payload = {}) {
 export async function getMyOrdersService(userId, filters = {}) {
   const pagination = buildOptionalPagination(filters);
   const result = await findOrderByUserId(userId, {
-    status: normalizeOptionalStatus(
-      filters.status,
-      assertValidOrderStatus,
-    ),
+    status: normalizeOptionalStatus(filters.status, assertValidOrderStatus),
     payment_status: normalizeOptionalStatus(
       filters.payment_status,
       assertValidPaymentStatus,

@@ -34,21 +34,21 @@ tags:
       Inisiasi pembayaran order (DELIVERY only) dan penerimaan webhook notifikasi
       dari Midtrans Payment Gateway.
   - name: Expenses
-    description: Manajemen pengeluaran operasional toko (gaji, sewa, listrik, pajak, dll). Hanya admin atau owner.
+    description: Manajemen pengeluaran operasional toko (gaji, sewa, listrik, pajak, dll). Hanya owner.
   - name: Analytics
-    description: Analisis keuangan toko berdasarkan rentang tanggal. Hanya admin atau owner.
+    description: Analisis keuangan toko berdasarkan rentang tanggal. Hanya owner.
   - name: Employee
     description: Manajemen akun karyawan dan admin. Hanya owner.
 
 paths:
-  /api/admin/expenses:
+  /api/owner/expenses:
     post:
       tags:
         - Expenses
       summary: Tambah pengeluaran baru
       description: Mencatat pengeluaran operasional baru (gaji, sewa, listrik, pajak, dll).
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -79,7 +79,7 @@ paths:
       summary: Ambil semua pengeluaran
       description: Mengambil daftar pengeluaran dengan filter opsional berdasarkan rentang tanggal dan kategori.
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - name: startDate
           in: query
@@ -124,13 +124,13 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/admin/expenses/{id}:
+  /api/owner/expenses/{id}:
     get:
       tags:
         - Expenses
       summary: Ambil detail pengeluaran
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdParam"
       responses:
@@ -152,7 +152,7 @@ paths:
       summary: Update pengeluaran
       description: Partial update — hanya kirim field yang ingin diubah.
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdParam"
       requestBody:
@@ -184,7 +184,7 @@ paths:
         - Expenses
       summary: Hapus pengeluaran
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdParam"
       responses:
@@ -201,7 +201,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/admin/analytics/omzet:
+  /api/owner/analytics/omzet:
     get:
       tags:
         - Analytics
@@ -211,7 +211,7 @@ paths:
         Omzet dihitung dari `itemsSubtotal` (tidak termasuk ongkos kirim).
         Juga menampilkan rincian omzet per produk diurutkan dari yang terbesar.
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/StartDateParam"
         - $ref: "#/components/parameters/EndDateParam"
@@ -235,7 +235,8 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/admin/analytics/net-profit:
+
+  /api/owner/analytics/net-profit:
     get:
       tags:
         - Analytics
@@ -246,7 +247,7 @@ paths:
         - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER)
         - **Saringan 3 — Laba Bersih**: Laba Operasional − Pajak (kategori TAX)
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/StartDateParam"
         - $ref: "#/components/parameters/EndDateParam"
@@ -270,7 +271,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/admin/analytics/cash-flow:
+  /api/owner/analytics/cash-flow:
     get:
       tags:
         - Analytics
@@ -282,7 +283,7 @@ paths:
         - **Arus Kas Bersih**: Uang Masuk − Uang Keluar
         - **Status**: `POSITIVE` (positif), `BREAK_EVEN` (impas), atau `NEGATIVE` (negatif)
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/StartDateParam"
         - $ref: "#/components/parameters/EndDateParam"
@@ -306,7 +307,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/admin/analytics/cost-analysis:
+  /api/owner/analytics/cost-analysis:
     get:
       tags:
         - Analytics
@@ -317,7 +318,7 @@ paths:
         - Rincian per kategori beserta persentase kontribusinya
         - Data tren bulanan untuk keperluan grafik
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/StartDateParam"
         - $ref: "#/components/parameters/EndDateParam"
@@ -1181,6 +1182,9 @@ paths:
         sendiri di toko. Backend akan menghitung subtotal barang, membuat order
         dan order item, mengurangi stok produk, mengosongkan cart, dan
         menetapkan shippingFee menjadi 0.
+
+        **Prasyarat:** Akun pengguna harus memiliki `phone_number` yang sudah diisi.
+        Jika belum, endpoint ini akan mengembalikan 400 Bad Request.
 
         Setelah order berhasil dibuat, sistem akan otomatis mengecek stok produk
         dan mengirim email notifikasi ke admin jika ada produk yang stoknya di
@@ -2053,10 +2057,8 @@ components:
           type: boolean
         username:
           type: string
+          description: Nama pengguna (dipetakan dari kolom `name` di database).
         phone_number:
-          type: string
-          nullable: true
-        image_url:
           type: string
           nullable: true
         role:
@@ -2368,6 +2370,10 @@ components:
         price:
           type: string
           example: "35000"
+        cost:
+          type: string
+          description: Harga modal (HPP) per unit produk. Opsional; default 0 jika tidak diisi.
+          example: "20000"
         description:
           type: string
         category_id:
@@ -2403,6 +2409,10 @@ components:
         price:
           type: string
           example: "35000"
+        cost:
+          type: string
+          description: Harga modal (HPP) per unit produk.
+          example: "20000"
         description:
           type: string
         category_id:
@@ -2436,6 +2446,12 @@ components:
         price:
           type: number
           format: float
+          description: Harga jual per unit produk.
+        cost:
+          type: number
+          format: float
+          description: Harga modal (HPP) per unit produk. Digunakan untuk menghitung gross profit.
+          example: 20000
         description:
           type: string
         image_url:
@@ -2447,6 +2463,7 @@ components:
           type: integer
           minimum: 0
           maximum: 100
+          description: Persentase diskon produk (0–100).
         created_at:
           type: string
           format: date-time
@@ -2459,6 +2476,7 @@ components:
           $ref: "#/components/schemas/Type"
         final_price:
           type: integer
+          description: Harga jual setelah diskon. Dihitung oleh backend saat response.
 
     ProductResponse:
       type: object
@@ -2498,6 +2516,9 @@ components:
               type: integer
             price:
               type: number
+            cost:
+              type: number
+              description: Harga modal (HPP) per unit produk.
             description:
               type: string
             image_url:
@@ -2804,7 +2825,7 @@ components:
         grossProfit:
           type: number
           format: float
-          description: grandTotal dikurangi totalCost.
+          description: Laba kotor order. Dihitung dari itemsSubtotal dikurangi totalCost (tidak termasuk ongkos kirim).
         notes:
           type: string
           nullable: true
@@ -3070,6 +3091,11 @@ components:
           type: string
           format: date
           example: "2025-06-30"
+      required:
+        - category
+        - description
+        - amount
+        - date
 
     Expense:
       type: object
@@ -3171,10 +3197,11 @@ components:
           $ref: "#/components/schemas/AnalyticsPeriod"
         omzet:
           type: number
+          description: Total omzet dari penjualan produk (itemsSubtotal, tidak termasuk ongkos kirim) dari order PAID.
           example: 150000000
         cogs:
           type: number
-          description: HPP (modal barang) — jumlah product.cost × qty dari order PAID.
+          description: HPP — akumulasi `orderItem.totalCost` (unitCost × qty) dari semua order PAID dalam periode.
           example: 95000000
         filter_1:
           type: object
@@ -3194,9 +3221,11 @@ components:
           properties:
             total:
               type: number
+              description: Total biaya operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER — tidak termasuk TAX).
               example: 21000000
             breakdown:
               type: array
+              description: Rincian pengeluaran per kategori dalam periode (mencakup semua kategori termasuk TAX, untuk keperluan tampilan).
               items:
                 type: object
                 properties:
