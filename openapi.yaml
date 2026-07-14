@@ -1171,6 +1171,39 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/orders/shipping-fee:
+    get:
+      tags:
+        - Orders
+      summary: Hitung ongkos kirim sebelum checkout
+      description: |
+        Menghitung ongkos kirim berdasarkan cart aktif pengguna dan alamat yang dipilih.
+        Membutuhkan `address_id` sebagai query parameter.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: address_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID alamat pengiriman pengguna.
+          example: 1
+      responses:
+        "200":
+          description: Kalkulasi ongkos kirim berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingFeeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/orders/pickup:
     post:
@@ -2899,6 +2932,32 @@ components:
           example: Success get order
         data:
           $ref: "#/components/schemas/Order"
+
+    ShippingFeeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success calculate shipping fee
+        data:
+          type: object
+          properties:
+            addressId:
+              type: integer
+              example: 1
+            distanceKm:
+              type: number
+              format: float
+              example: 5.4
+            shippingFee:
+              type: number
+              example: 12000
+            itemsSubtotal:
+              type: number
+              example: 75000
+            grandTotal:
+              type: number
+              example: 87000
 
     OrderCancelResponse:
       type: object

@@ -258,6 +258,34 @@ function assertValidPaymentTransition(currentStatus, nextStatus) {
   }
 }
 
+export async function calculateShippingFeeService(userId, addressId) {
+  const parsedAddressId = parsePositiveInt(addressId, "address_id");
+
+  const cart = await findCartByUserId(userId);
+  if (!cart || cart.items.length === 0) {
+    throw badRequest("Cart is empty");
+  }
+
+  const address = await findAddressById(parsedAddressId, userId);
+  if (!address) {
+    throw notFound("Address not found");
+  }
+
+  const items = buildCheckoutItems(cart.items);
+  const totals = buildCheckoutTotals(items, {
+    fulfillmentMethod: "DELIVERY",
+    address,
+  });
+
+  return {
+    addressId: totals.addressId ?? parsedAddressId,
+    distanceKm: totals.distanceKm,
+    shippingFee: totals.shippingFee,
+    itemsSubtotal: totals.itemsSubtotal,
+    grandTotal: totals.grandTotal,
+  };
+}
+
 export async function createOrderService(userId, payload = {}) {
   const addressId = parsePositiveInt(payload.address_id, "address_id");
   const notes = normalizeOptionNotes(payload.notes);
