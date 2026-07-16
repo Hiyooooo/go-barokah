@@ -409,6 +409,44 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /api/auth/google:
+    post:
+      tags:
+        - Auth
+      summary: Login dengan Google OAuth
+      description: |
+        Login atau registrasi otomatis menggunakan akun Google.
+        Frontend mengirimkan `id_token` yang didapat dari Google Sign-In SDK.
+        Backend akan memverifikasi token tersebut, lalu mencari atau membuat akun baru,
+        dan mengembalikan JWT Go Barokah.
+
+        Jika email Google sudah terdaftar sebagai akun biasa (email+password),
+        user tetap bisa login via Google dan akun akan otomatis terverifikasi.
+        Jika email belum terdaftar, akun baru akan dibuat tanpa password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_token:
+                  type: string
+                  description: ID Token yang didapat dari Google Sign-In SDK di frontend.
+              required:
+                - id_token
+            example:
+              id_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6..."
+      responses:
+        "200":
+          description: Login Google berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /api/otp/request:
     post:
       tags:

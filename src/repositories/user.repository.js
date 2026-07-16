@@ -72,3 +72,29 @@ export async function markEmailVerified(userId) {
     data: { emailVerified: true },
   });
 }
+
+export async function findOrCreateGoogleUser({ email, name }) {
+  let user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (user) {
+    if (!user.emailVerified) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true },
+      });
+    }
+    return user;
+  }
+
+  return await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: null,
+      role: "user",
+      emailVerified: true,
+    },
+  });
+}

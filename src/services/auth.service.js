@@ -2,12 +2,16 @@ import {
   createAccount,
   findUserByEmail,
   findUserByPhone,
+  findOrCreateGoogleUser,
 } from "../repositories/user.repository.js";
 import { requestEmailOtpByUserId } from "./otp.service.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { signToken } from "../utils/jwt.js";
+import { OAuth2Client } from "google-auth-library";
 
 import { badRequest, isEmail, isValidPhone } from "../utils/index.js";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export function sanitizeUser(account) {
   return {
@@ -88,6 +92,12 @@ export async function loginService({ email, password }) {
     throw badRequest("Invalid email or password");
   }
 
+  if (!account.password) {
+    throw badRequest(
+      "This account is registered via Google. Please login using Google.",
+    );
+  }
+
   const ok = await comparePassword(password, account.password);
   if (!ok) {
     throw badRequest("Invalid email or password");
@@ -95,7 +105,7 @@ export async function loginService({ email, password }) {
 
   if (!account.emailVerified) {
     throw badRequest(
-      "Email belum terverifikasi. Silakan verifikasi OTP terlebih dahulu",
+      "Your email has not been verified. Please verify the OTP first.",
     );
   }
 
@@ -104,5 +114,39 @@ export async function loginService({ email, password }) {
     email: account.email,
     role: account.role,
   });
+  return { account: sanitizeUser(account), token };
+}
+
+export async function googleLoginService({ id_token }) {
+  if (!id_token) {
+    throw badRequest("id_token is required");
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    throw badRequest("Invalid Google id_token");
+  }
+
+  if (!payload.email_verified) {
+    throw badRequest("Google email is not verified");
+  }
+
+  const account = await findOrCreateGoogleUser({
+    email: payload.email,
+    name: payload.name || payload.email.split("@")[0],
+  });
+
+  const token = signToken({
+    sub: account.id,
+    email: account.email,
+    role: account.role,
+  });
+
   return { account: sanitizeUser(account), token };
 }
