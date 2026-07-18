@@ -238,6 +238,21 @@ export async function updateProductService(id, payload) {
   return { ...result, final_price };
 }
 
+export async function toggleProductStatusService(id) {
+  const parsedId = parseProductId(id);
+
+  const existing = await findProductById(parsedId);
+  if (!existing) {
+    throw notFound("Product not found");
+  }
+
+  const newStatus = !existing.is_active;
+  const result = await updateProduct(parsedId, { is_active: newStatus });
+
+  const final_price = calculateFinalPrice(result.price, result.discount_amount);
+  return { ...result, final_price };
+}
+
 export async function deleteProductService(id) {
   const parsedId = parseProductId(id);
 

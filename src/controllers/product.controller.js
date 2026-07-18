@@ -5,6 +5,7 @@ import {
   getAllProductsAdminService,
   getProductByIdService,
   updateProductService,
+  toggleProductStatusService,
 } from "../services/product.service.js";
 import { badRequest } from "../utils/index.js";
 
@@ -95,6 +96,18 @@ export async function deleteProductController(req, res, next) {
     const result = await deleteProductService(req.params.id);
     return res.status(200).json({
       message: "Success delete product",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function toggleProductStatusController(req, res, next) {
+  try {
+    const result = await toggleProductStatusService(req.params.id);
+    return res.status(200).json({
+      message: `Success ${result.is_active ? 'activate' : 'deactivate'} product`,
       data: result,
     });
   } catch (error) {

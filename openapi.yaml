@@ -702,6 +702,26 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/products/admin/all:
+    get:
+      tags:
+        - Products
+      summary: Ambil semua produk (Khusus Admin/Owner)
+      description: Mengambil seluruh produk, termasuk yang berstatus tidak aktif (is_active = false).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar seluruh produk.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/products/{id}:
     parameters:
       - $ref: "#/components/parameters/ProductId"
@@ -766,6 +786,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/products/{id}/toggle-active:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags:
+        - Products
+      summary: Toggle status aktif produk
+      description: Mengubah status produk dari aktif ke nonaktif, atau sebaliknya. Tanpa form-data, cukup hit endpoint ini. (Khusus Admin/Owner)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Status produk berhasil diubah.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success deactivate product"
+                  data:
+                    $ref: "#/components/schemas/ProductResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
