@@ -4,7 +4,7 @@ import {
     getAddressByIdService,
     getAllAdressService,
     updateAddressService
-} from "../services/addres.service.js";
+} from "../services/address.service.js";
 
 
 export async function getAllAdressController(req, res, next) {
@@ -12,7 +12,7 @@ export async function getAllAdressController(req, res, next) {
         const address = await getAllAdressService(req.user.id)
 
         if (address.length === 0) {
-            res.status(200).json({ message: "You do not have an address yet" })
+            return res.status(200).json({ message: "You do not have an address yet", data: [] })
         }
         return res.status(200).json({
             message: "Successfull get all address",

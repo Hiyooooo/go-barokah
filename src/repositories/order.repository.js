@@ -26,8 +26,14 @@ export async function createOrderFromCart({
   notes,
 }) {
   return await prisma.$transaction(async (tx) => {
-    const orderTotalCost   = items.reduce((sum, i) => sum + (i.totalCost ?? 0), 0);
-    const orderGrossProfit = items.reduce((sum, i) => sum + (i.grossProfit ?? 0), 0);
+    const orderTotalCost = items.reduce(
+      (sum, i) => sum + (i.totalCost ?? 0),
+      0,
+    );
+    const orderGrossProfit = items.reduce(
+      (sum, i) => sum + (i.grossProfit ?? 0),
+      0,
+    );
 
     const order = await tx.order.create({
       data: {
@@ -142,13 +148,29 @@ export async function findOrderByIdAndUserId(id, userId) {
 }
 
 export async function findAllOrders(filters = {}) {
-  const { status, payment_status } = filters;
+  const { status, payment_status, pagination } = filters;
+  const where = {
+    ...(status && { status }),
+    ...(payment_status && { paymentStatus: payment_status }),
+  };
+
+  if (pagination) {
+    const [orders, total] = await prisma.$transaction([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.take,
+        include: orderInclude,
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return { orders, total };
+  }
 
   return await prisma.order.findMany({
-    where: {
-      ...(status && { status }),
-      ...(payment_status && { paymentStatus: payment_status }),
-    },
+    where,
     orderBy: { createdAt: "desc" },
     include: orderInclude,
   });
@@ -175,6 +197,8 @@ export async function cancelOrderAndRestoreStock(id) {
     }
 
     for (const item of order.items) {
+      if (!item.productId) continue;
+
       await tx.product.update({
         where: {
           id: item.productId,

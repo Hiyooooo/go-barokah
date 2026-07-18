@@ -104,6 +104,14 @@ export async function getAllOrdersController(req, res, next) {
   try {
     const result = await getAllOrdersService(req.query);
 
+    if (result.meta) {
+      return res.status(200).json({
+        message: "Success get all orders",
+        data: result.data,
+        meta: result.meta,
+      });
+    }
+
     return res.status(200).json({
       message: "Success get all orders",
       data: result,

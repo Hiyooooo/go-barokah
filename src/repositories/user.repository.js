@@ -24,7 +24,6 @@ export async function createAccount({
   username,
   role = "user",
   phone_number,
-  image_url,
 }) {
   return await prisma.user.create({
     data: {
@@ -33,7 +32,6 @@ export async function createAccount({
       password,
       role,
       phoneNumber: phone_number,
-      imageUrl: image_url,
     },
   });
 }

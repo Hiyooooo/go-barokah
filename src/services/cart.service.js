@@ -95,6 +95,10 @@ async function validateProductAndStock(productId, quantity) {
     throw notFound("Product not found");
   }
 
+  if (!product.is_active) {
+    throw badRequest("Product is no longer available");
+  }
+
   if (product.stock <= 0) {
     throw badRequest("Product is out of stock");
   }

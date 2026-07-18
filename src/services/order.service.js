@@ -102,6 +102,10 @@ function buildCheckoutItems(cartItems) {
       throw badRequest("Product is no longer available");
     }
 
+    if (!product.is_active) {
+      throw badRequest(`Product ${product.name} is no longer available`);
+    }
+
     if (cartItem.quantity <= 0) {
       throw badRequest("Product quantity must be greater than 0");
     }
@@ -452,12 +456,28 @@ export async function cancelMyOrderService(userId, id) {
 }
 
 export async function getAllOrdersService(filters = {}) {
-  return await findAllOrders({
+  const pagination = buildOptionalPagination(filters);
+  const result = await findAllOrders({
     status: filters.status ? String(filters.status).toUpperCase() : undefined,
     payment_status: filters.payment_status
       ? String(filters.payment_status).toUpperCase()
       : undefined,
+    pagination,
   });
+
+  if (!pagination) {
+    return result;
+  }
+
+  return {
+    data: result.orders,
+    meta: {
+      page: pagination.page,
+      limit: pagination.take,
+      total: result.total,
+      totalPages: Math.ceil(result.total / pagination.take),
+    },
+  };
 }
 
 export async function getOrderByIdForAdminService(id) {
