@@ -6,6 +6,7 @@ import {
   getAllProductsAdminController,
   getProductByIdController,
   updateProductController,
+  toggleProductStatusController,
 } from "../controllers/product.controller.js";
 import { authRequired, authorization } from "../middlewares/auth.middleware.js";
 import { uploadProductImage } from "../middlewares/upload.middleware.js";
@@ -36,6 +37,14 @@ router.patch(
   uploadProductImage.single("image"),
   updateProductController,
 );
+
+router.patch(
+  "/:id/toggle-active",
+  authRequired,
+  authorization("admin", "owner"),
+  toggleProductStatusController,
+);
+
 router.delete(
   "/:id",
   authRequired,
