@@ -3,6 +3,7 @@ import {
   createProductController,
   deleteProductController,
   getAllProductsController,
+  getAllProductsAdminController,
   getProductByIdController,
   updateProductController,
 } from "../controllers/product.controller.js";
@@ -13,6 +14,13 @@ const router = express.Router();
 
 router.get("/", getAllProductsController);
 router.get("/:id", getProductByIdController);
+
+router.get(
+  "/admin/all",
+  authRequired,
+  authorization("admin", "owner"),
+  getAllProductsAdminController,
+);
 
 router.post(
   "/",

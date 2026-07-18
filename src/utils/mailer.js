@@ -1,27 +1,46 @@
 import nodemailer from "nodemailer";
 
-export async function sendOtpEmail({ to, otp }) {
-  const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST,
-    port: Number(process.env.MAIL_PORT) || 587,
-    secure: process.env.MAIL_SECURE === "true",
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-  });
+const transporter = nodemailer.createTransport({
+  host: process.env.MAIL_HOST,
+  port: Number(process.env.MAIL_PORT) || 587,
+  secure: process.env.MAIL_SECURE === "true",
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+});
 
+export async function sendOtpEmail({ to, otp }) {
   const mailOptions = {
     from: `"Go Barokah" <${process.env.MAIL_USER}>`,
     to,
-    subject: "Kode OTP Verifikasi Email",
+    subject: "Kode OTP Verifikasi Email — Go Barokah",
     html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2>Verifikasi Email</h2>
-        <p>Gunakan kode OTP berikut:</p>
-        <h1 style="letter-spacing: 6px; color: #333;">${otp}</h1>
-        <p>Kode ini berlaku selama <b>10 menit</b>.</p>
-        <p>Jangan bagikan kode ini ke siapa pun.</p>
+      <div style="font-family: 'Inter', 'Segoe UI', Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); border: 1px solid #f1f5f9;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #047857 0%, #059669 100%); padding: 32px 24px; text-align: center;">
+          <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 16px; line-height: 48px; text-align: center; font-size: 24px;">🔐</div>
+          <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Verifikasi Email Anda</h1>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 32px 28px; background: #ffffff; text-align: center;">
+          <p style="color: #475569; font-size: 15px; margin: 0 0 24px; line-height: 1.6;">
+            Terima kasih telah mendaftar di <strong>Go Barokah</strong>. Silakan gunakan kode OTP berikut untuk menyelesaikan proses verifikasi:
+          </p>
+          
+          <!-- OTP Box -->
+          <div style="background: #ecfdf5; border: 1px dashed #34d399; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <h1 style="margin: 0; color: #065f46; font-size: 36px; font-weight: 700; letter-spacing: 8px;">${otp}</h1>
+          </div>
+          
+          <p style="color: #64748b; font-size: 13px; margin: 0 0 8px;">
+            ⏳ Kode ini hanya berlaku selama <b>10 menit</b>.
+          </p>
+          <p style="color: #ef4444; font-size: 13px; margin: 0; font-weight: 500;">
+            Jangan pernah membagikan kode ini kepada siapa pun.
+          </p>
+        </div>
       </div>
     `,
   };
@@ -44,27 +63,17 @@ export async function sendLowStockAlertEmail({ products }) {
 
   const adminEmail = process.env.ADMIN_EMAIL || process.env.MAIL_USER;
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST,
-    port: Number(process.env.MAIL_PORT) || 587,
-    secure: process.env.MAIL_SECURE === "true",
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-  });
-
   const tableRows = products
     .map(
       (p) => `
         <tr>
-          <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #111827;">${p.name}</td>
-          <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6; text-align: center; font-size: 14px; color: #6b7280;">${p.category?.name ?? "-"}</td>
-          <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6; text-align: center;">
+          <td style="padding: 14px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #0f172a; font-weight: 500;">${p.name}</td>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 13px; color: #64748b;">${p.category?.name ?? "-"}</td>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #f1f5f9; text-align: right;">
             ${
               p.stock === 0
-                ? `<span style="display: inline-block; padding: 3px 10px; background: #fee2e2; color: #991b1b; border-radius: 999px; font-size: 12px; font-weight: 700;">Habis</span>`
-                : `<span style="display: inline-block; padding: 3px 10px; background: #fef9c3; color: #854d0e; border-radius: 999px; font-size: 12px; font-weight: 700;">${p.stock} unit</span>`
+                ? `<span style="display: inline-block; padding: 4px 12px; background: #fee2e2; color: #991b1b; border-radius: 999px; font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Habis (0)</span>`
+                : `<span style="display: inline-block; padding: 4px 12px; background: #ffedd5; color: #9a3412; border-radius: 999px; font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${p.stock} unit</span>`
             }
           </td>
         </tr>`,
@@ -72,54 +81,56 @@ export async function sendLowStockAlertEmail({ products }) {
     .join("");
 
   const html = `
-    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10);">
+    <div style="font-family: 'Inter', 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
 
-      <!-- Header -->
-      <div style="background: linear-gradient(160deg, #14532d 0%, #166534 50%, #15803d 100%); padding: 36px 28px 32px; text-align: center;">
-        <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.15); border-radius: 50%; margin: 0 auto 14px; line-height: 56px; text-align: center; font-size: 28px;">⚠️</div>
-        <h1 style="margin: 0 0 6px; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: 0.2px;">Peringatan Stok Menipis</h1>
-        <p style="margin: 0; color: #86efac; font-size: 13px; letter-spacing: 0.3px;">Go Barokah — Sistem Notifikasi Otomatis</p>
+      <!-- Header: Urgent Amber/Orange Theme -->
+      <div style="background: linear-gradient(135deg, #d97706 0%, #ea580c 100%); padding: 32px 28px; text-align: center;">
+        <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 16px; line-height: 56px; text-align: center; font-size: 28px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">⚠️</div>
+        <h1 style="margin: 0 0 8px; color: #ffffff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Peringatan Stok Menipis</h1>
+        <p style="margin: 0; color: #fde68a; font-size: 14px;">Go Barokah — Sistem Notifikasi Otomatis</p>
       </div>
 
       <!-- Alert Banner -->
-      <div style="background: #fef9c3; padding: 10px 28px; border-bottom: 1px solid #fde68a; text-align: center;">
-        <p style="margin: 0; color: #78350f; font-size: 13px;">
-          🔔 Ditemukan <strong>${products.length} produk</strong> dengan stok di bawah batas minimum
+      <div style="background: #fffbeb; border-bottom: 1px solid #fef3c7; padding: 12px 28px; text-align: center;">
+        <p style="margin: 0; color: #b45309; font-size: 13.5px; font-weight: 500;">
+          Ditemukan <strong>${products.length} produk</strong> dengan stok di bawah batas aman.
         </p>
       </div>
 
       <!-- Body -->
-      <div style="padding: 28px 28px 24px; background: #ffffff;">
-        <p style="color: #374151; font-size: 14px; margin: 0 0 20px; line-height: 1.7;">
-          Halo <strong>Admin</strong>, berikut adalah daftar produk yang memerlukan perhatian segera:
+      <div style="padding: 32px 28px 24px; background: #ffffff;">
+        <p style="color: #475569; font-size: 14.5px; margin: 0 0 20px; line-height: 1.6;">
+          Halo <strong>Admin</strong>,<br>Berikut adalah daftar produk yang memerlukan perhatian dan tindakan restok segera:
         </p>
 
-        <!-- Table -->
-        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-          <thead>
-            <tr style="background: #15803d;">
-              <th style="padding: 11px 16px; text-align: left; color: #ffffff; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Nama Produk</th>
-              <th style="padding: 11px 16px; text-align: center; color: #ffffff; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Kategori</th>
-              <th style="padding: 11px 16px; text-align: center; color: #ffffff; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Sisa Stok</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
+        <!-- Modern Table -->
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <th style="padding: 12px 16px; text-align: left; color: #475569; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Nama Produk</th>
+                <th style="padding: 12px 16px; text-align: center; color: #475569; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Kategori</th>
+                <th style="padding: 12px 16px; text-align: right; color: #475569; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Status Stok</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
 
-        <!-- Callout -->
-        <div style="margin-top: 20px; padding: 14px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 6px;">
-          <p style="margin: 0; color: #14532d; font-size: 13px; line-height: 1.6;">
-            🛒 Segera lakukan <strong>restok</strong> untuk menghindari kehabisan barang dan menjaga kepuasan pelanggan.
+        <!-- Info Callout -->
+        <div style="padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; border-radius: 6px;">
+          <p style="margin: 0; color: #1e3a8a; font-size: 13.5px; line-height: 1.5;">
+            <strong>Tindakan diperlukan:</strong> Segera lakukan penambahan stok melalui dashboard admin untuk menghindari penolakan pesanan pelanggan.
           </p>
         </div>
       </div>
 
       <!-- Footer -->
-      <div style="padding: 16px 28px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
-        <p style="margin: 0; color: #9ca3af; font-size: 11px; line-height: 1.6;">
-          Email ini dikirim otomatis oleh sistem <strong style="color: #6b7280;">Go Barokah</strong>. Mohon tidak membalas email ini.
+      <div style="padding: 20px 28px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+        <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">
+          Email ini dihasilkan secara otomatis oleh <strong>Sistem Go Barokah</strong>.<br>Mohon untuk tidak membalas email ini.
         </p>
       </div>
 
@@ -134,9 +145,13 @@ export async function sendLowStockAlertEmail({ products }) {
       html,
     });
 
-    console.log(`[LowStock] Email notifikasi terkirim ke ${adminEmail} — messageId: ${info.messageId}`);
+    console.log(
+      `[LowStock] Email notifikasi terkirim ke ${adminEmail} — messageId: ${info.messageId}`,
+    );
   } catch (error) {
-    console.error("[LowStock] Gagal mengirim email notifikasi stok:", error.message);
+    console.error(
+      "[LowStock] Gagal mengirim email notifikasi stok:",
+      error.message,
+    );
   }
 }
-

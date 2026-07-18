@@ -5,8 +5,13 @@ const productRelations = {
   type: true,
 };
 
-export async function getAllProducts() {
+export async function getAllProducts(filters = {}) {
+  const where = {};
+  if (filters.is_active !== undefined) {
+    where.is_active = filters.is_active;
+  }
   return await prisma.product.findMany({
+    where,
     include: productRelations,
   });
 }
@@ -30,6 +35,7 @@ export async function createProduct(data) {
       image_url: data.image_url,
       stock: data.stock,
       discount_amount: data.discount_amount,
+      ...(data.is_active !== undefined && { is_active: data.is_active }),
     },
     include: productRelations,
   });
@@ -50,6 +56,7 @@ export async function updateProduct(id, data) {
       ...(data.discount_amount !== undefined && {
         discount_amount: data.discount_amount,
       }),
+      ...(data.is_active !== undefined && { is_active: data.is_active }),
     },
     include: productRelations,
   });

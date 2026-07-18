@@ -80,6 +80,18 @@ export async function updateAddress(id, userId, data) {
   });
 }
 
+export async function isAddressUsedInActiveOrder(id) {
+  const activeOrder = await prisma.order.findFirst({
+    where: {
+      addressId: id,
+      status: {
+        in: ["PENDING", "PROCESSING", "SHIPPED"],
+      },
+    },
+  });
+  return activeOrder !== null;
+}
+
 export async function deleteAddress(id) {
   return await prisma.address.delete({
     where: { id },

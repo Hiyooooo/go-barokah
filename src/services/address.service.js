@@ -3,6 +3,7 @@ import {
   deleteAddress,
   findAddressById,
   getAllAddress,
+  isAddressUsedInActiveOrder,
   updateAddress,
 } from "../repositories/address.repository.js";
 
@@ -148,6 +149,11 @@ export async function deleteAddressService(id, userId) {
   const existing = await findAddressById(parsedId, userId);
   if (!existing) {
     throw notFound("Address not found");
+  }
+
+  const isUsed = await isAddressUsedInActiveOrder(parsedId);
+  if (isUsed) {
+    throw badRequest("Cannot delete address because it is being used in an active order");
   }
 
   return await deleteAddress(parsedId);

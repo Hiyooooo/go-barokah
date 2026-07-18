@@ -67,6 +67,7 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     image_url,
     stock,
     discount_amount,
+    is_active,
   } = payload;
   const data = {};
 
@@ -142,10 +143,26 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     data.cost = parseNonNegativeNumber(cost, "cost");
   }
 
+  if (is_active !== undefined) {
+    data.is_active = is_active === "true" || is_active === true;
+  }
+
   return data;
 }
 
-export async function getAllProductsService() {
+export async function getAllProductsService(filters = {}) {
+  const resolvedFilters = {
+    is_active: true,
+    ...filters,
+  };
+  const products = await getAllProducts(resolvedFilters);
+  return products.map((product) => ({
+    ...product,
+    final_price: calculateFinalPrice(product.price, product.discount_amount),
+  }));
+}
+
+export async function getAllProductsAdminService() {
   const products = await getAllProducts();
   return products.map((product) => ({
     ...product,

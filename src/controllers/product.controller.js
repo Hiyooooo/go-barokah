@@ -2,6 +2,7 @@ import {
   createProductService,
   deleteProductService,
   getAllProductsService,
+  getAllProductsAdminService,
   getProductByIdService,
   updateProductService,
 } from "../services/product.service.js";
@@ -14,6 +15,18 @@ function createImageUrl(file) {
 export async function getAllProductsController(req, res, next) {
   try {
     const products = await getAllProductsService();
+    return res.status(200).json({
+      message: "Success get all products",
+      data: products,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAllProductsAdminController(req, res, next) {
+  try {
+    const products = await getAllProductsAdminService();
     return res.status(200).json({
       message: "Success get all products",
       data: products,

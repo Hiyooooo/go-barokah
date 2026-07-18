@@ -16,7 +16,6 @@ export function sanitizeUser(account) {
     email_verified: account.emailVerified,
     username: account.name,
     phone_number: account.phoneNumber,
-    image_url: account.imageUrl,
     role: account.role,
     createdAt: account.createdAt,
   };
@@ -27,7 +26,6 @@ export async function registerService({
   password,
   username,
   phone_number,
-  image_url,
 }) {
   const normalizedEmail = String(email ?? "")
     .trim()
@@ -65,7 +63,6 @@ export async function registerService({
     username,
     role: "user",
     phone_number,
-    image_url,
   });
 
   await requestEmailOtpByUserId(account.id);
