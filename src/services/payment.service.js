@@ -75,7 +75,8 @@ export async function initiatePaymentService(userId, orderId) {
     });
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || "https://web.hy-study.my.id";
+  const frontendUrl =
+    process.env.FRONTEND_URL || "https://web.hy-study.my.id/profile/orders";
 
   const midtransPayload = {
     transaction_details: {
