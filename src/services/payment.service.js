@@ -23,7 +23,9 @@ export async function initiatePaymentService(userId, orderId) {
   }
 
   if (order.fulfillmentMethod === "PICKUP") {
-    throw badRequest("Order dengan metode PICKUP tidak memerlukan pembayaran online");
+    throw badRequest(
+      "Order dengan metode PICKUP tidak memerlukan pembayaran online",
+    );
   }
 
   if (order.status === "CANCELLED") {
@@ -38,7 +40,8 @@ export async function initiatePaymentService(userId, orderId) {
     throw badRequest("Status pembayaran gagal, silakan hubungi admin");
   }
 
-  const tokenStillValid = order.snapToken && !isSnapTokenExpired(order.snapTokenCreatedAt);
+  const tokenStillValid =
+    order.snapToken && !isSnapTokenExpired(order.snapTokenCreatedAt);
 
   if (tokenStillValid) {
     return {
@@ -72,6 +75,8 @@ export async function initiatePaymentService(userId, orderId) {
     });
   }
 
+  const frontendUrl = process.env.FRONTEND_URL || "https://web.hy-study.my.id";
+
   const midtransPayload = {
     transaction_details: {
       order_id: midtransOrderId,
@@ -83,6 +88,11 @@ export async function initiatePaymentService(userId, orderId) {
       phone: order.user.phoneNumber ?? order.recipientPhone,
     },
     item_details: itemDetails,
+    callbacks: {
+      finish: `${frontendUrl}/orders/success?order_id=${order.orderNumber}`,
+      unfinish: `${frontendUrl}/orders/pending?order_id=${order.orderNumber}`,
+      error: `${frontendUrl}/orders/error?order_id=${order.orderNumber}`,
+    },
   };
 
   let token, redirect_url;
@@ -92,7 +102,9 @@ export async function initiatePaymentService(userId, orderId) {
     redirect_url = result.redirect_url;
   } catch (error) {
     console.error("[Midtrans] createSnapToken error:", error.message);
-    throw badRequest("Layanan pembayaran sedang tidak tersedia, silakan coba beberapa saat lagi");
+    throw badRequest(
+      "Layanan pembayaran sedang tidak tersedia, silakan coba beberapa saat lagi",
+    );
   }
 
   await updateOrderPaymentToken(parsedId, {
@@ -120,7 +132,12 @@ export async function handleMidtransNotificationService(payload) {
     fraud_status,
   } = payload;
 
-  const isValid = verifyMidtransSignature(order_id, status_code, gross_amount, signature_key);
+  const isValid = verifyMidtransSignature(
+    order_id,
+    status_code,
+    gross_amount,
+    signature_key,
+  );
   if (!isValid) {
     throw forbidden("Invalid Midtrans signature");
   }
@@ -149,15 +166,12 @@ export async function handleMidtransNotificationService(payload) {
       paidAt: new Date(),
     });
     await updateOrderStatus(order.id, { status: "PROCESSING" });
-  }
-
-  else if (
+  } else if (
     transaction_status === "pending" ||
     (transaction_status === "capture" && fraud_status === "challenge")
   ) {
     console.log("[Midtrans] Transaction pending/challenge:", order_id);
-  }
-  else if (
+  } else if (
     transaction_status === "deny" ||
     transaction_status === "expire" ||
     transaction_status === "cancel"
