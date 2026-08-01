@@ -35,6 +35,8 @@ export async function createProduct(data) {
       image_url: data.image_url,
       stock: data.stock,
       discount_amount: data.discount_amount,
+      critical_stock: data.critical_stock ?? 10,
+      min_order_quantity: data.min_order_quantity ?? 1,
       ...(data.is_active !== undefined && { is_active: data.is_active }),
     },
     include: productRelations,
@@ -56,6 +58,8 @@ export async function updateProduct(id, data) {
       ...(data.discount_amount !== undefined && {
         discount_amount: data.discount_amount,
       }),
+      ...(data.critical_stock !== undefined && { critical_stock: data.critical_stock }),
+      ...(data.min_order_quantity !== undefined && { min_order_quantity: data.min_order_quantity }),
       ...(data.is_active !== undefined && { is_active: data.is_active }),
     },
     include: productRelations,
@@ -68,21 +72,4 @@ export async function deleteProduct(id) {
   });
 }
 
-export async function findLowStockProducts(threshold) {
-  return await prisma.product.findMany({
-    where: {
-      stock: {
-        lte: threshold,
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      stock: true,
-      category: {
-        select: { name: true },
-      },
-    },
-    orderBy: { stock: "asc" },
-  });
-}
+
