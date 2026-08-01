@@ -10,8 +10,8 @@ import {
   updateOrderPaymentStatus,
   updateOrderStatus,
 } from "../repositories/order.repository.js";
-import { findLowStockProducts } from "../repositories/product.repository.js";
-import { findUserById } from "../repositories/user.repository.js";
+import { getAllProducts } from "../repositories/product.repository.js";
+
 import { buildDeliveryShippingSummary } from "./shipping.service.js";
 import {
   badRequest,
@@ -21,11 +21,13 @@ import {
 } from "../utils/index.js";
 
 function checkAndNotifyLowStock() {
-  const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 10;
-  findLowStockProducts(threshold)
-    .then((products) => {
-      if (products.length > 0) {
-        sendLowStockAlertEmail({ products });
+  getAllProducts()
+    .then((allProducts) => {
+      const lowStockProducts = allProducts.filter(
+        (p) => p.stock <= (p.critical_stock ?? 10),
+      );
+      if (lowStockProducts.length > 0) {
+        sendLowStockAlertEmail({ products: lowStockProducts });
       }
     })
     .catch((err) => {
@@ -94,7 +96,7 @@ function normalizeStatus(value, fieldName) {
   return String(value).trim().toUpperCase();
 }
 
-function buildCheckoutItems(cartItems) {
+function buildCheckoutItems(cartItems, { enforceMinOrder = true } = {}) {
   return cartItems.map((cartItem) => {
     const product = cartItem.product;
 
@@ -108,6 +110,12 @@ function buildCheckoutItems(cartItems) {
 
     if (cartItem.quantity <= 0) {
       throw badRequest("Product quantity must be greater than 0");
+    }
+    const minOrderQty = product.min_order_quantity ?? 1;
+    if (cartItem.quantity < minOrderQty) {
+      throw badRequest(
+        `${product.name} must be ordered with minimum quantity ${minOrderQty}`,
+      );
     }
 
     if (product.stock <= 0) {

@@ -4,7 +4,6 @@ import {
   findProductById,
   getAllProducts,
   updateProduct,
-  findLowStockProducts,
 } from "../repositories/product.repository.js";
 import { findCategoryById } from "../repositories/category.repository.js";
 import { findTypeById } from "../repositories/type.repository.js";
@@ -68,6 +67,8 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
     stock,
     discount_amount,
     is_active,
+    critical_stock,
+    min_order_quantity,
   } = payload;
   const data = {};
 
@@ -127,6 +128,20 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
 
   if (stock !== undefined) {
     data.stock = parseNonNegativeInteger(stock, "stock");
+  }
+
+  if (critical_stock !== undefined) {
+    data.critical_stock = parseNonNegativeInteger(
+      critical_stock,
+      "critical_stock",
+    );
+  }
+
+  if (min_order_quantity !== undefined) {
+    data.min_order_quantity = parsePositiveInt(
+      min_order_quantity,
+      "min_order_quantity",
+    );
   }
 
   if (!isEmptyValue(discount_amount)) {
@@ -221,11 +236,13 @@ export async function updateProductService(id, payload) {
   }
 
   if (data.stock !== undefined) {
-    const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 10;
-    findLowStockProducts(threshold)
-      .then((products) => {
-        if (products.length > 0) {
-          sendLowStockAlertEmail({ products });
+    getAllProducts()
+      .then((allProducts) => {
+        const lowStockProducts = allProducts.filter(
+          (p) => p.stock <= (p.critical_stock ?? 10),
+        );
+        if (lowStockProducts.length > 0) {
+          sendLowStockAlertEmail({ products: lowStockProducts });
         }
       })
       .catch((err) => {

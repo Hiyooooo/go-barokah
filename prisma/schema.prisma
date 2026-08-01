@@ -66,16 +66,18 @@ model EmailOtp {
 }
 
 model Product {
-  id              Int      @id @default(autoincrement())
-  name            String   @db.VarChar(255)
-  categoryId      Int      @map("category_id")
-  typeId          Int      @map("type_id")
-  price           Float
-  cost            Float    @default(0)
-  description     String   @db.Text
-  image_url       String   @db.VarChar(255)
-  stock           Int
-  discount_amount Int
+  id                  Int      @id @default(autoincrement())
+  name                String   @db.VarChar(255)
+  categoryId          Int      @map("category_id")
+  typeId              Int      @map("type_id")
+  price               Float
+  cost                Float    @default(0)
+  description         String   @db.Text
+  image_url           String   @db.VarChar(255)
+  stock               Int
+  discount_amount     Int
+  critical_stock      Int @default(10)
+  min_order_quantity  Int @default(1)
   is_active       Boolean  @default(true) @map("is_active")
   created_at      DateTime @default(now()) @db.Timestamp(0)
   updated_at      DateTime @updatedAt @db.Timestamp(0)
