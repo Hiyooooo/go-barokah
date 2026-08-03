@@ -2518,6 +2518,14 @@ components:
           minimum: 0
           maximum: 100
           description: Persentase diskon produk (0–100).
+        critical_stock:
+          type: integer
+          description: Batas stok kritis per produk. Jika `stock <= critical_stock` maka notifikasi stok rendah akan dikirim.
+          default: 10
+        min_order_quantity:
+          type: integer
+          description: Kuantitas minimum yang harus dipesan untuk produk ini. Nilai default = 1 (tidak ada batas).
+          default: 1
         created_at:
           type: string
           format: date-time

@@ -118,9 +118,9 @@ function buildCheckoutItems(cartItems, { enforceMinOrder = true } = {}) {
       );
     }
 
-    if (product.stock <= 0) {
-      throw badRequest(`${product.name} is out of stock`);
-    }
+if (product.stock <= (product.critical_stock ?? 10)) {
+  throw badRequest(`${product.name} stock is critically low and cannot be purchased`);
+}
 
     if (cartItem.quantity > product.stock) {
       throw badRequest(`${product.name} quantity exceeds product stock`);
