@@ -99,9 +99,9 @@ async function validateProductAndStock(productId, quantity) {
     throw badRequest("Product is no longer available");
   }
 
-  if (product.stock <= 0) {
-    throw badRequest("Product is out of stock");
-  }
+if (product.stock <= (product.critical_stock ?? 10)) {
+  throw badRequest("Product stock is critically low and cannot be purchased");
+}
 
   if (quantity > product.stock) {
     throw badRequest("quantity exceeds product stock");
