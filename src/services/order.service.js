@@ -11,6 +11,7 @@ import {
   updateOrderStatus,
 } from "../repositories/order.repository.js";
 import { getAllProducts } from "../repositories/product.repository.js";
+import { findUserById } from "../repositories/user.repository.js";
 
 import { buildDeliveryShippingSummary } from "./shipping.service.js";
 import {
@@ -111,16 +112,20 @@ function buildCheckoutItems(cartItems, { enforceMinOrder = true } = {}) {
     if (cartItem.quantity <= 0) {
       throw badRequest("Product quantity must be greater than 0");
     }
-    const minOrderQty = product.min_order_quantity ?? 1;
-    if (cartItem.quantity < minOrderQty) {
-      throw badRequest(
-        `${product.name} must be ordered with minimum quantity ${minOrderQty}`,
-      );
+    if (enforceMinOrder) {
+      const minOrderQty = product.min_order_quantity ?? 1;
+      if (cartItem.quantity < minOrderQty) {
+        throw badRequest(
+          `${product.name} must be ordered with minimum quantity ${minOrderQty}`,
+        );
+      }
     }
 
-if (product.stock <= (product.critical_stock ?? 10)) {
-  throw badRequest(`${product.name} stock is critically low and cannot be purchased`);
-}
+    if (product.stock - cartItem.quantity <= (product.critical_stock ?? 10)) {
+      throw badRequest(
+        `${product.name} stock would fall below critical level after this purchase`,
+      );
+    }
 
     if (cartItem.quantity > product.stock) {
       throw badRequest(`${product.name} quantity exceeds product stock`);
@@ -154,6 +159,18 @@ if (product.stock <= (product.critical_stock ?? 10)) {
       grossProfit,
     };
   });
+}
+
+function validateCriticalStock(cartItems) {
+  for (const cartItem of cartItems) {
+    const product = cartItem.product;
+    if (!product) continue;
+    if (product.stock - cartItem.quantity <= (product.critical_stock ?? 10)) {
+      throw badRequest(
+        `${product.name} stock would fall below critical level after this purchase`,
+      );
+    }
+  }
 }
 
 function buildCheckoutTotals(items, options = {}) {
@@ -312,6 +329,7 @@ export async function createOrderService(userId, payload = {}) {
     throw notFound("Address not found");
   }
 
+  validateCriticalStock(cart.items);
   const items = buildCheckoutItems(cart.items);
   const totals = buildCheckoutTotals(items, {
     fulfillmentMethod: "DELIVERY",
@@ -365,7 +383,8 @@ export async function createPickupOrderService(userId, payload = {}) {
     throw badRequest("Cart is empty");
   }
 
-  const items = buildCheckoutItems(cart.items);
+  validateCriticalStock(cart.items);
+  const items = buildCheckoutItems(cart.items, { enforceMinOrder: false });
   const totals = buildCheckoutTotals(items, {
     fulfillmentMethod: "PICKUP",
   });

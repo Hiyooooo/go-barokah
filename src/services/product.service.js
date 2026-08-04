@@ -167,7 +167,6 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
 
 export async function getAllProductsService(filters = {}) {
   const resolvedFilters = {
-    is_active: true,
     ...filters,
   };
   const products = await getAllProducts(resolvedFilters);

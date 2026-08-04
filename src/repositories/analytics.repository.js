@@ -3,8 +3,17 @@ import prisma from "../config/prisma.js";
 export async function getRevenueAggregation(startDate, endDate) {
   return await prisma.order.aggregate({
     where: {
-      paymentStatus: "PAID",
-      paidAt: { gte: startDate, lte: endDate },
+      OR: [
+        {
+          paymentStatus: "PAID",
+          paidAt: { gte: startDate, lte: endDate },
+        },
+        {
+          fulfillmentMethod: "PICKUP",
+          status: "COMPLETED",
+          completedAt: { gte: startDate, lte: endDate },
+        },
+      ],
     },
     _sum: {
       grandTotal:    true,
@@ -23,8 +32,17 @@ export async function getRevenuePerProduct(startDate, endDate) {
     by: ["productId", "productName"],
     where: {
       order: {
-        paymentStatus: "PAID",
-        paidAt: { gte: startDate, lte: endDate },
+        OR: [
+          {
+            paymentStatus: "PAID",
+            paidAt: { gte: startDate, lte: endDate },
+          },
+          {
+            fulfillmentMethod: "PICKUP",
+            status: "COMPLETED",
+            completedAt: { gte: startDate, lte: endDate },
+          },
+        ],
       },
     },
     _sum: {
@@ -39,8 +57,17 @@ export async function getRevenuePerProduct(startDate, endDate) {
 export async function getCashInflowAggregation(startDate, endDate) {
   return await prisma.order.aggregate({
     where: {
-      paymentStatus: "PAID",
-      paidAt: { gte: startDate, lte: endDate },
+      OR: [
+        {
+          paymentStatus: "PAID",
+          paidAt: { gte: startDate, lte: endDate },
+        },
+        {
+          fulfillmentMethod: "PICKUP",
+          status: "COMPLETED",
+          completedAt: { gte: startDate, lte: endDate },
+        },
+      ],
     },
     _sum: {
       grandTotal:  true,
