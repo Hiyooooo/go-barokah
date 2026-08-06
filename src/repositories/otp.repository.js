@@ -1,9 +1,11 @@
 import prisma from "../config/prisma.js";
 
-export async function createOtp({ userId, otpHash, expiresAt }) {
-  return await prisma.emailOtp.create({
+export async function createOtp({ userId, type = "EMAIL", target = null, otpHash, expiresAt }) {
+  return await prisma.otp.create({
     data: {
       userId: userId,
+      type: type,
+      target: target,
       otpHash: otpHash,
       expiresAt: expiresAt,
       usedAt: null,
@@ -11,12 +13,12 @@ export async function createOtp({ userId, otpHash, expiresAt }) {
   });
 }
 
-export async function findActiveOtpByUserId(userId) {
-  return await prisma.emailOtp.findFirst({
+export async function findActiveOtpByUserId(userId, type = "EMAIL") {
+  return await prisma.otp.findFirst({
     where: {
       userId: userId,
+      type: type,
       usedAt: null,
-      expiresAt: { gt: new Date() },
     },
     orderBy: {
       createdAt: "desc",
@@ -25,7 +27,7 @@ export async function findActiveOtpByUserId(userId) {
 }
 
 export async function invalidateOtp(id) {
-  return await prisma.emailOtp.update({
+  return await prisma.otp.update({
     where: { id },
     data: { usedAt: new Date() },
   });

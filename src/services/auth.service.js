@@ -16,6 +16,7 @@ export function sanitizeUser(account) {
     email_verified: account.emailVerified,
     username: account.name,
     phone_number: account.phoneNumber,
+    phone_number_verified: account.phoneNumberVerified,
     role: account.role,
     createdAt: account.createdAt,
   };

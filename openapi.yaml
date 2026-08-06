@@ -12,7 +12,7 @@ tags:
   - name: Auth
     description: Registrasi dan login pengguna.
   - name: OTP
-    description: Verifikasi email menggunakan OTP.
+    description: Verifikasi email atau nomor WhatsApp menggunakan OTP. Verifikasi nomor membutuhkan Bearer token.
   - name: Users
     description: Data akun pengguna yang sedang login.
   - name: Addresses
@@ -235,7 +235,6 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-
   /api/owner/analytics/net-profit:
     get:
       tags:
@@ -409,7 +408,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/otp/request:
+  /api/otp/email/request:
     post:
       tags:
         - OTP
@@ -436,7 +435,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/otp/verify:
+  /api/otp/email/verify:
     post:
       tags:
         - OTP
@@ -461,6 +460,62 @@ paths:
                 message: Verify OTP successfully
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/otp/phone/request:
+    post:
+      tags:
+        - OTP
+      summary: Minta OTP WhatsApp
+      description: Mengirim OTP ke nomor WhatsApp user yang sedang login. Nomor dikirim melalui Fonnte. Membutuhkan Bearer token.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OTP berhasil dikirim ke WhatsApp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: WhatsApp OTP sent successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/otp/phone/verify:
+    post:
+      tags:
+        - OTP
+      summary: Verifikasi OTP WhatsApp
+      description: Memverifikasi OTP yang diterima user melalui WhatsApp. Membutuhkan Bearer token.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpPhoneVerifyRequest"
+            example:
+              otp: "123456"
+      responses:
+        "200":
+          description: Nomor WhatsApp berhasil diverifikasi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Verify phone number successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -2115,6 +2170,8 @@ components:
         phone_number:
           type: string
           nullable: true
+        phone_number_verified:
+          type: boolean
         role:
           type: string
           example: user
@@ -2174,6 +2231,15 @@ components:
         - email
         - otp
 
+    OtpPhoneVerifyRequest:
+      type: object
+      properties:
+        otp:
+          type: string
+          pattern: "^[0-9]{6}$"
+      required:
+        - otp
+
     UpdateAccountRequest:
       type: object
       properties:
@@ -2205,6 +2271,8 @@ components:
           type: string
           nullable: true
         emailVerified:
+          type: boolean
+        phoneNumberVerified:
           type: boolean
         createdAt:
           type: string

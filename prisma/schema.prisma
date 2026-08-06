@@ -15,12 +15,13 @@ model User {
   role          String  @db.VarChar(100)
   phoneNumber   String? @map("phone_number") @db.VarChar(20)
   emailVerified Boolean @default(false) @map("email_verified")
+  phoneNumberVerified Boolean @default(false) @map("phone_number_verified")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   addresses Address[]
-  emailOtps EmailOtp[]
+  otps      Otp[]
   cart      Cart?
   orders    Order[]
 
@@ -49,9 +50,11 @@ model Address {
   @@map("address")
 }
 
-model EmailOtp {
+model Otp {
   id        Int       @id @default(autoincrement())
   userId    String    @map("user_id") @db.Char(36)
+  type      String    @db.VarChar(20)
+  target    String?   @db.VarChar(255)
   otpHash   String    @map("otp_hash") @db.VarChar(255)
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
@@ -61,8 +64,9 @@ model EmailOtp {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, type])
   @@index([userId])
-  @@map("email_otp")
+  @@map("otps")
 }
 
 model Product {

@@ -1,8 +1,9 @@
 import {
+  findUserById,
   findUserByPhone,
   updateAccount,
 } from "../repositories/user.repository.js";
-import { badRequest, isValidPhone } from "../utils/index.js";
+import { badRequest, isValidPhone, notFound } from "../utils/index.js";
 
 export async function updateAccountService(userId, payload) {
   if (!payload.username || !payload.username.trim()) {
@@ -25,10 +26,20 @@ export async function updateAccountService(userId, payload) {
     }
   }
 
+  const existingAccount = await findUserById(userId);
+  if (!existingAccount) {
+    throw notFound("User not found");
+  }
+
   const data = {
     userId,
     username,
     ...(phone_number && { phone_number }),
   };
+
+  if (phone_number && phone_number !== existingAccount.phoneNumber) {
+    data.phoneNumberVerified = false;
+  }
+
   return await updateAccount(userId, data);
 }
