@@ -1,6 +1,8 @@
 import {
   requestEmailOtpByEmail,
+  requestPhoneNumberOtpByUserId,
   verifyEmailOtpByEmail,
+  verifyPhoneNumberOtpByUserId,
 } from "../services/otp.service.js";
 
 export async function requestEmailOtpController(req, res, next) {
@@ -34,6 +36,36 @@ export async function verifyEmailOtpController(req, res, next) {
 
     return res.status(200).json({
       message: "Verify OTP successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function requestPhoneNumberOtpController(req, res, next) {
+  try {
+    await requestPhoneNumberOtpByUserId(req.user.id);
+
+    return res.status(200).json({
+      message: "WhatsApp OTP sent successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function verifyPhoneNumberOtpController(req, res, next) {
+  try {
+    const { otp } = req.body;
+    if (!otp) {
+      return res.status(400).json({
+        message: "OTP is required",
+      });
+    }
+    await verifyPhoneNumberOtpByUserId(req.user.id, otp);
+
+    return res.status(200).json({
+      message: "Verify phone number successfully",
     });
   } catch (error) {
     next(error);

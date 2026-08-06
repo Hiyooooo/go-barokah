@@ -42,6 +42,9 @@ export async function updateAccount(userId, data) {
     data: {
       name: data.username,
       phoneNumber: data.phone_number,
+      ...(data.phoneNumberVerified !== undefined && {
+        phoneNumberVerified: data.phoneNumberVerified,
+      }),
     },
     select: {
       id: true,
@@ -50,6 +53,7 @@ export async function updateAccount(userId, data) {
       role: true,
       phoneNumber: true,
       emailVerified: true,
+      phoneNumberVerified: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -62,6 +66,14 @@ export async function verifiedEmail(userId) {
     select: { emailVerified: true },
   });
   return Boolean(user?.emailVerified);
+}
+
+export async function verifiedPhone(userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phoneNumberVerified: true },
+  });
+  return Boolean(user?.phoneNumberVerified);
 }
 
 export async function markEmailVerified(userId) {
