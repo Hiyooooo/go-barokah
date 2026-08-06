@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  calculateShippingFeeController,
   cancelMyOrderController,
   createOrderController,
   createPickupOrderController,
@@ -17,6 +18,7 @@ router.use(authorization("user", "admin"));
 router.post("/", createOrderController);
 router.post("/pickup", createPickupOrderController);
 router.get("/", getMyOrdersController);
+router.get("/shipping-fee", calculateShippingFeeController);
 router.get("/:id", getMyOrderByIdController);
 router.patch("/:id/cancel", cancelMyOrderController);
 router.post("/:id/pay", initiatePaymentController);

@@ -1,4 +1,5 @@
 import {
+  calculateShippingFeeService,
   cancelMyOrderService,
   createOrderService,
   createPickupOrderService,
@@ -9,6 +10,22 @@ import {
   updateOrderStatusService,
   updatePaymentStatusService,
 } from "../services/order.service.js";
+
+export async function calculateShippingFeeController(req, res, next) {
+  try {
+    const result = await calculateShippingFeeService(
+      req.user.id,
+      req.query.address_id,
+    );
+
+    return res.status(200).json({
+      message: "Success calculate shipping fee",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function createOrderController(req, res, next) {
   try {
