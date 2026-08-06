@@ -83,6 +83,13 @@ export async function markEmailVerified(userId) {
   });
 }
 
+export async function markPhoneNumberVerified(userId) {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { phoneNumberVerified: true },
+  });
+}
+
 export async function findOrCreateGoogleUser({ email, name }) {
   let user = await prisma.user.findUnique({
     where: { email },
