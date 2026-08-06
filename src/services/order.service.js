@@ -336,10 +336,6 @@ export async function createOrderService(userId, payload = {}) {
     address,
   });
 
-  if (totals.totalQuantity < 10) {
-    throw badRequest("The minimum order is 10 items");
-  }
-
   const orderNumber = generateOrderNumber();
 
   try {
@@ -388,10 +384,6 @@ export async function createPickupOrderService(userId, payload = {}) {
   const totals = buildCheckoutTotals(items, {
     fulfillmentMethod: "PICKUP",
   });
-
-  if (totals.totalQuantity < 10) {
-    throw badRequest("The minimum order is 10 items");
-  }
 
   const orderNumber = generateOrderNumber();
 
