@@ -24,7 +24,7 @@ app.use(cors());
 
 app.use(
   cors({
-    origin: ["https://go-barokah-rho.vercel.app", "http://localhost:5173"],
+    origin: ["https://web.hy-study.my.id", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
