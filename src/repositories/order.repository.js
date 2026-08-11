@@ -17,6 +17,7 @@ const orderInclude = {
 export async function createOrderFromCart({
   userId,
   cartId,
+  selectedCartItemIds,
   address,
   fulfillmentMethod = "DELIVERY",
   pickupRecipient,
@@ -99,6 +100,9 @@ export async function createOrderFromCart({
     await tx.cartItem.deleteMany({
       where: {
         cartId,
+        id: {
+          in: selectedCartItemIds,
+        },
       },
     });
 

@@ -16,6 +16,7 @@ export async function calculateShippingFeeController(req, res, next) {
     const result = await calculateShippingFeeService(
       req.user.id,
       req.query.address_id,
+      req.query.cart_item_ids,
     );
 
     return res.status(200).json({

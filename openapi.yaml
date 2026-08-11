@@ -1212,11 +1212,13 @@ paths:
         - Orders
       summary: Checkout cart menjadi order
       description: |
-        Membuat order dari isi cart pengguna yang sedang login. Backend akan
-        mengambil alamat berdasarkan address_id, menghitung subtotal barang,
-        menghitung ongkir berdasarkan jarak alamat ke toko, membuat order dan
-        order item, mengurangi stok produk, lalu mengosongkan cart. Alamat
-        delivery harus sudah memiliki koordinat latitude dan longitude.
+        Membuat order dari cart item yang dipilih pengguna yang sedang login.
+        Backend mengambil quantity terbaru dari cart berdasarkan cart_item_ids,
+        menghitung subtotal barang, menghitung ongkir berdasarkan jarak alamat
+        ke toko, membuat order dan order item, mengurangi stok produk, lalu
+        menghapus hanya item yang dipilih dari cart. Item lain tetap berada di
+        cart. Alamat delivery harus sudah memiliki koordinat latitude dan
+        longitude.
 
         Setelah order berhasil dibuat, sistem akan otomatis mengecek stok produk
         dan mengirim email notifikasi ke admin jika ada produk yang stoknya di
@@ -1232,6 +1234,7 @@ paths:
               $ref: "#/components/schemas/OrderCreateRequest"
             example:
               address_id: 1
+              cart_item_ids: [12, 15]
               notes: Tolong kirim sore hari
       responses:
         "201":
@@ -1324,8 +1327,9 @@ paths:
         - Orders
       summary: Hitung ongkos kirim sebelum checkout
       description: |
-        Menghitung ongkos kirim berdasarkan cart aktif pengguna dan alamat yang dipilih.
-        Membutuhkan `address_id` sebagai query parameter.
+        Menghitung ongkos kirim berdasarkan cart item yang dipilih pengguna dan
+        alamat yang dipilih. Membutuhkan `address_id` dan `cart_item_ids` sebagai
+        query parameter.
       security:
         - bearerAuth: []
       parameters:
@@ -1336,6 +1340,19 @@ paths:
             type: integer
           description: ID alamat pengiriman pengguna.
           example: 1
+        - name: cart_item_ids
+          in: query
+          required: true
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            items:
+              type: integer
+              minimum: 1
+          description: ID cart item yang dipilih, dipisahkan dengan koma.
+          example: [12, 15]
       responses:
         "200":
           description: Kalkulasi ongkos kirim berhasil.
@@ -1358,10 +1375,12 @@ paths:
         - Orders
       summary: Checkout cart menjadi order pickup
       description: |
-        Membuat order dari isi cart pengguna yang sedang login untuk pengambilan
-        sendiri di toko. Backend akan menghitung subtotal barang, membuat order
-        dan order item, mengurangi stok produk, mengosongkan cart, dan
-        menetapkan shippingFee menjadi 0.
+        Membuat order dari cart item yang dipilih pengguna yang sedang login
+        untuk pengambilan sendiri di toko. Backend mengambil quantity terbaru
+        dari cart berdasarkan cart_item_ids, menghitung subtotal barang, membuat
+        order dan order item, mengurangi stok produk, menghapus hanya item yang
+        dipilih dari cart, dan menetapkan shippingFee menjadi 0. Item lain tetap
+        berada di cart.
 
         **Prasyarat:** Akun pengguna harus memiliki `phone_number` yang sudah diisi.
         Jika belum, endpoint ini akan mengembalikan 400 Bad Request.
@@ -1373,12 +1392,13 @@ paths:
       security:
         - bearerAuth: []
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/OrderPickupCreateRequest"
             example:
+              cart_item_ids: [12, 15]
               notes: Akan diambil sore hari
       responses:
         "201":
@@ -2867,8 +2887,16 @@ components:
           type: string
           nullable: true
           description: Catatan opsional untuk order.
+        cart_item_ids:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+          description: ID cart item yang dipilih untuk diproses menjadi order.
       required:
         - address_id
+        - cart_item_ids
 
     OrderPickupCreateRequest:
       type: object
@@ -2877,6 +2905,15 @@ components:
           type: string
           nullable: true
           description: Catatan opsional untuk order pickup.
+        cart_item_ids:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+          description: ID cart item yang dipilih untuk diproses menjadi order pickup.
+      required:
+        - cart_item_ids
 
     OrderStatusUpdateRequest:
       type: object

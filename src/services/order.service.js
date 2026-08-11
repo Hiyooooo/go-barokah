@@ -89,6 +89,36 @@ function normalizeOptionNotes(notes) {
   return normalized || null;
 }
 
+function parseSelectedCartItemIds(value) {
+  const rawIds = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",").map((id) => id.trim())
+      : null;
+
+  if (!rawIds || rawIds.length === 0) {
+    throw badRequest("cart_item_ids must contain at least one item");
+  }
+
+  const ids = rawIds.map((id) => parsePositiveInt(id, "cart_item_id"));
+  if (new Set(ids).size !== ids.length) {
+    throw badRequest("cart_item_ids must not contain duplicate items");
+  }
+
+  return ids;
+}
+
+function getSelectedCartItems(cart, selectedCartItemIds) {
+  const selectedIds = new Set(selectedCartItemIds);
+  const items = cart.items.filter((item) => selectedIds.has(item.id));
+
+  if (items.length !== selectedIds.size) {
+    throw badRequest("One or more selected cart items were not found");
+  }
+
+  return items;
+}
+
 function normalizeStatus(value, fieldName) {
   if (!value) {
     throw badRequest(`${fieldName} is required`);
@@ -287,8 +317,13 @@ function assertValidPaymentTransition(currentStatus, nextStatus) {
   }
 }
 
-export async function calculateShippingFeeService(userId, addressId) {
+export async function calculateShippingFeeService(
+  userId,
+  addressId,
+  selectedCartItemIds,
+) {
   const parsedAddressId = parsePositiveInt(addressId, "address_id");
+  const selectedIds = parseSelectedCartItemIds(selectedCartItemIds);
 
   const cart = await findCartByUserId(userId);
   if (!cart || cart.items.length === 0) {
@@ -300,7 +335,8 @@ export async function calculateShippingFeeService(userId, addressId) {
     throw notFound("Address not found");
   }
 
-  const items = buildCheckoutItems(cart.items);
+  const selectedItems = getSelectedCartItems(cart, selectedIds);
+  const items = buildCheckoutItems(selectedItems);
   const totals = buildCheckoutTotals(items, {
     fulfillmentMethod: "DELIVERY",
     address,
@@ -317,6 +353,7 @@ export async function calculateShippingFeeService(userId, addressId) {
 
 export async function createOrderService(userId, payload = {}) {
   const addressId = parsePositiveInt(payload.address_id, "address_id");
+  const selectedIds = parseSelectedCartItemIds(payload.cart_item_ids);
   const notes = normalizeOptionNotes(payload.notes);
 
   const cart = await findCartByUserId(userId);
@@ -329,8 +366,9 @@ export async function createOrderService(userId, payload = {}) {
     throw notFound("Address not found");
   }
 
-  validateCriticalStock(cart.items);
-  const items = buildCheckoutItems(cart.items);
+  const selectedItems = getSelectedCartItems(cart, selectedIds);
+  validateCriticalStock(selectedItems);
+  const items = buildCheckoutItems(selectedItems);
   const totals = buildCheckoutTotals(items, {
     fulfillmentMethod: "DELIVERY",
     address,
@@ -342,6 +380,7 @@ export async function createOrderService(userId, payload = {}) {
     const order = await createOrderFromCart({
       userId,
       cartId: cart.id,
+      selectedCartItemIds: selectedIds,
       address,
       fulfillmentMethod: "DELIVERY",
       orderNumber,
@@ -363,6 +402,7 @@ export async function createOrderService(userId, payload = {}) {
 }
 
 export async function createPickupOrderService(userId, payload = {}) {
+  const selectedIds = parseSelectedCartItemIds(payload.cart_item_ids);
   const notes = normalizeOptionNotes(payload.notes);
 
   const user = await findUserById(userId);
@@ -379,8 +419,9 @@ export async function createPickupOrderService(userId, payload = {}) {
     throw badRequest("Cart is empty");
   }
 
-  validateCriticalStock(cart.items);
-  const items = buildCheckoutItems(cart.items, { enforceMinOrder: false });
+  const selectedItems = getSelectedCartItems(cart, selectedIds);
+  validateCriticalStock(selectedItems);
+  const items = buildCheckoutItems(selectedItems, { enforceMinOrder: false });
   const totals = buildCheckoutTotals(items, {
     fulfillmentMethod: "PICKUP",
   });
@@ -391,6 +432,7 @@ export async function createPickupOrderService(userId, payload = {}) {
     const order = await createOrderFromCart({
       userId,
       cartId: cart.id,
+      selectedCartItemIds: selectedIds,
       fulfillmentMethod: "PICKUP",
       pickupRecipient: {
         name: user.name,
