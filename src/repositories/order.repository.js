@@ -7,6 +7,7 @@ const orderInclude = {
       name: true,
       email: true,
       phoneNumber: true,
+      phoneNumberVerified: true,
     },
   },
   items: {

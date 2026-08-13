@@ -3,14 +3,18 @@ import { badRequest } from "./error.factory.js";
 const FONNTE_API_URL = "https://api.fonnte.com/send";
 const FONNTE_API_KEY = process.env.FONNTE_API_KEY;
 
-export async function sendWhatsappOtp({ target, message }) {
-  if (!FONNTE_API_KEY) {
-    throw badRequest("FONNTE_API_KEY is not configured");
-  }
-
-  const normalizedTarget = String(target)
+function normalizeTarget(target) {
+  return String(target)
     .replace(/\D/g, "")
     .replace(/^62(?=\d{9,})/, "0");
+}
+
+export async function sendWhatsappMessage({ target, message }) {
+  if (!FONNTE_API_KEY) {
+    throw new Error("FONNTE_API_KEY is not configured");
+  }
+
+  const normalizedTarget = normalizeTarget(target);
 
   const response = await fetch(FONNTE_API_URL, {
     method: "POST",
@@ -28,8 +32,16 @@ export async function sendWhatsappOtp({ target, message }) {
   const result = await response.json();
 
   if (!result.status) {
-    throw badRequest(result.reason || "Failed to send OTP, please try again");
+    throw new Error(result.reason || "Failed to send WhatsApp message");
   }
 
   return result;
+}
+
+export async function sendWhatsappOtp({ target, message }) {
+  try {
+    return await sendWhatsappMessage({ target, message });
+  } catch (error) {
+    throw badRequest(error.message || "Failed to send OTP, please try again");
+  }
 }

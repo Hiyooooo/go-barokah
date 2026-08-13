@@ -14,6 +14,7 @@ import { getAllProducts } from "../repositories/product.repository.js";
 import { findUserById } from "../repositories/user.repository.js";
 
 import { buildDeliveryShippingSummary } from "./shipping.service.js";
+import { notifyOrderStatusChanged } from "./order-notification.service.js";
 import {
   badRequest,
   notFound,
@@ -578,7 +579,13 @@ export async function updateOrderStatusService(id, payload) {
     ...(nextStatus === "COMPLETED" && { completedAt: new Date() }),
   };
 
-  return await updateOrderStatus(parsedId, data);
+  const updatedOrder = await updateOrderStatus(parsedId, data);
+
+  if (nextStatus === "PROCESSING" || nextStatus === "SHIPPED") {
+    await notifyOrderStatusChanged(updatedOrder, nextStatus);
+  }
+
+  return updatedOrder;
 }
 
 export async function updatePaymentStatusService(id, payload) {
