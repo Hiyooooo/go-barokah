@@ -1,7 +1,7 @@
 import { sendWhatsappMessage } from "../utils/fonnte.js";
 import { sendOrderStatusEmail } from "../utils/mailer.js";
 
-const NOTIFIABLE_STATUSES = new Set(["PROCESSING", "SHIPPED"]);
+const NOTIFIABLE_STATUSES = new Set(["PROCESSING", "SHIPPED", "COMPLETED"]);
 
 function formatRupiah(value) {
   return new Intl.NumberFormat("id-ID", {
@@ -15,7 +15,9 @@ function buildOrderStatusMessage(order, status) {
   const statusMessage =
     status === "PROCESSING"
       ? "sedang diproses dan disiapkan"
-      : "telah dikirim";
+      : status === "SHIPPED"
+        ? "telah dikirim"
+        : "telah selesai";
   const items = order.items
     .map((item) => `- ${item.productName} x${item.quantity}`)
     .join("\n");

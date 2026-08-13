@@ -581,7 +581,11 @@ export async function updateOrderStatusService(id, payload) {
 
   const updatedOrder = await updateOrderStatus(parsedId, data);
 
-  if (nextStatus === "PROCESSING" || nextStatus === "SHIPPED") {
+  if (
+    nextStatus === "PROCESSING" ||
+    nextStatus === "SHIPPED" ||
+    nextStatus === "COMPLETED"
+  ) {
     await notifyOrderStatusChanged(updatedOrder, nextStatus);
   }
 
