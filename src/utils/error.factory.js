@@ -24,6 +24,17 @@ export function conflict(message = "Conflict", options = {}) {
   return createHttpError(409, message, options);
 }
 
+export function tooManyRequests(message = "Too many requests", options = {}) {
+  return createHttpError(429, message, options);
+}
+
+export function serviceUnavailable(
+  message = "Service temporarily unavailable",
+  options = {},
+) {
+  return createHttpError(503, message, options);
+}
+
 export function unprocessableEntity(
   message = "Unprocessable entity",
   options = {},

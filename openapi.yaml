@@ -382,6 +382,10 @@ paths:
                 $ref: "#/components/schemas/RegisterResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/auth/login:
     post:
@@ -446,11 +450,12 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/otp/request:
+  /api/otp/email/request:
     post:
       tags:
         - OTP
       summary: Minta OTP email
+      description: Meminta OTP verifikasi email. Rate limit berlaku maksimal 1 request per 60 detik, 5 request per 15 menit, dan 10 request dalam rolling 24 jam.
       requestBody:
         required: true
         content:
@@ -470,6 +475,10 @@ paths:
                 message: Email OTP sent successfully
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -506,7 +515,7 @@ paths:
       tags:
         - OTP
       summary: Minta OTP WhatsApp
-      description: Mengirim OTP ke nomor WhatsApp user yang sedang login. Nomor dikirim melalui Fonnte. Membutuhkan Bearer token.
+      description: Mengirim OTP ke nomor WhatsApp user yang sedang login. Nomor dikirim melalui Fonnte. Membutuhkan Bearer token. Rate limit berlaku maksimal 1 request per 60 detik, 5 request per 15 menit, dan 10 request dalam rolling 24 jam.
       security:
         - bearerAuth: []
       responses:
@@ -524,6 +533,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/otp/phone/verify:
     post:
@@ -2122,6 +2135,30 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             message: Internal server error
+    TooManyRequests:
+      description: Batas permintaan OTP terlampaui.
+      headers:
+        Retry-After:
+          description: Jumlah detik sebelum client dapat mencoba kembali.
+          schema:
+            type: integer
+            minimum: 1
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Please wait before requesting another OTP
+            retry_after_seconds: 60
+    ServiceUnavailable:
+      description: Layanan OTP tidak tersedia karena Redis tidak dapat diakses.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: OTP service is temporarily unavailable
 
   schemas:
     MessageResponse:
@@ -2137,6 +2174,10 @@ components:
       properties:
         message:
           type: string
+        retry_after_seconds:
+          type: integer
+          minimum: 1
+          description: Jumlah detik sebelum client dapat mencoba kembali. Hanya dikirim untuk response 429 tertentu.
       required:
         - message
 
