@@ -243,8 +243,9 @@ paths:
       description: |
         Menghitung laba bersih melalui 3 saringan berurutan:
         - **Saringan 1 — Laba Kotor**: Omzet − HPP (modal barang dari `product.cost`)
-        - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER)
-        - **Saringan 3 — Laba Bersih**: Laba Operasional − Pajak (kategori TAX)
+        - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, TAX, OTHER)
+        - **Saringan 3 — Laba Bersih**: Laba Kotor − Total Biaya Operasional
+        - **DEPRECIATION** tidak termasuk biaya operasional dan tidak mengurangi laba bersih
       security:
         - bearerAuth: []
       parameters:
@@ -277,8 +278,10 @@ paths:
       summary: Lihat arus kas operasi
       description: |
         Menghitung arus kas operasi dalam periode yang dipilih:
-        - **Uang Masuk**: Total `grandTotal` dari order PAID (termasuk ongkos kirim)
-        - **Uang Keluar**: HPP (modal barang) + semua pengeluaran yang tercatat
+        - **Uang Masuk**: Total `grandTotal` dari order yang pembayarannya diterima (termasuk ongkos kirim)
+        - **Uang Keluar**: Pengeluaran kas yang tercatat dalam kategori SALARY, RENT, UTILITIES, TAX, dan OTHER
+        - **DEPRECIATION** tidak dihitung sebagai uang keluar karena merupakan biaya non-kas
+        - HPP tidak dihitung sebagai uang keluar karena pembayaran supplier belum dicatat secara terpisah
         - **Arus Kas Bersih**: Uang Masuk − Uang Keluar
         - **Status**: `POSITIVE` (positif), `BREAK_EVEN` (impas), atau `NEGATIVE` (negatif)
       security:
@@ -3457,7 +3460,7 @@ components:
           $ref: "#/components/schemas/AnalyticsPeriod"
         omzet:
           type: number
-          description: Total omzet dari penjualan produk (itemsSubtotal), tidak termasuk ongkos kirim.
+          description: Total omzet dari penjualan produk dengan harga setelah diskon (itemsSubtotal), tidak termasuk ongkos kirim.
           example: 15000000
         total_discount:
           type: number
@@ -3526,8 +3529,8 @@ components:
           properties:
             total:
               type: number
-              description: Total biaya operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER — tidak termasuk TAX).
-              example: 21000000
+              description: Total biaya operasional (SALARY, RENT, UTILITIES, TAX, OTHER — tidak termasuk DEPRECIATION).
+              example: 22000000
             breakdown:
               type: array
               description: Rincian pengeluaran per kategori dalam periode (mencakup semua kategori termasuk TAX, untuk keperluan tampilan).
@@ -3541,21 +3544,21 @@ components:
                     example: 12000000
         filter_2:
           type: object
-          description: "Saringan 2: Laba Operasional = Laba Kotor - Biaya Operasional"
+          description: "Saringan 2: Laba Operasional = Laba Kotor - seluruh Biaya Operasional termasuk TAX"
           properties:
             label:
               type: string
               example: Operating Profit
             value:
               type: number
-              example: 34000000
+              example: 33000000
         tax:
           type: number
-          description: Total pajak (kategori TAX).
+          description: Total pajak (kategori TAX), sudah termasuk dalam operating_expenses.
           example: 1000000
         filter_3:
           type: object
-          description: "Saringan 3: Laba Bersih = Laba Operasional - Pajak"
+          description: "Saringan 3: Laba Bersih = Laba Kotor - Total Biaya Operasional"
           properties:
             label:
               type: string
@@ -3593,21 +3596,19 @@ components:
           properties:
             total:
               type: number
-              description: Total uang keluar (HPP + semua pengeluaran).
-              example: 40000000
+              description: Total pengeluaran kas yang tercatat, tidak termasuk HPP dan DEPRECIATION.
+              example: 10000000
             breakdown:
               type: object
               properties:
-                cogs:
-                  type: number
-                  example: 30000000
                 operating_expenses:
                   type: number
+                  description: Total SALARY, RENT, UTILITIES, TAX, dan OTHER.
                   example: 10000000
         net_cash_flow:
           type: number
           description: Selisih uang masuk dikurangi uang keluar.
-          example: 15000000
+          example: 45000000
         status:
           type: string
           enum: [POSITIVE, BREAK_EVEN, NEGATIVE]
