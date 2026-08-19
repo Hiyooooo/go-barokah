@@ -21,6 +21,10 @@ import {
   sendLowStockAlertEmail,
 } from "../utils/index.js";
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+
 function parseProductId(id) {
   return parsePositiveInt(id, "product id");
 }
@@ -165,23 +169,44 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
   return data;
 }
 
-export async function getAllProductsService(filters = {}) {
-  const resolvedFilters = {
-    ...filters,
-  };
-  const products = await getAllProducts(resolvedFilters);
-  return products.map((product) => ({
-    ...product,
-    final_price: calculateFinalPrice(product.price, product.discount_amount),
-  }));
+function buildProductPagination(filters = {}) {
+  const page = parsePositiveInt(filters.page ?? DEFAULT_PAGE, "page");
+  const limit = parsePositiveInt(filters.limit ?? DEFAULT_LIMIT, "limit");
+
+  if (limit > MAX_LIMIT) {
+    throw badRequest(`limit must be less than or equal to ${MAX_LIMIT}`);
+  }
+
+  return { page, limit, skip: (page - 1) * limit };
 }
 
-export async function getAllProductsAdminService() {
-  const products = await getAllProducts();
-  return products.map((product) => ({
+export async function getAllProductsService(filters = {}) {
+  const pagination = buildProductPagination(filters);
+  const search =
+    filters.q === undefined ? undefined : String(filters.q).trim();
+
+  if (search && search.length > 100) {
+    throw badRequest("q must be 100 characters or less");
+  }
+
+  const result = await getAllProducts({
+    search: search || undefined,
+    pagination,
+  });
+  const products = result.products.map((product) => ({
     ...product,
     final_price: calculateFinalPrice(product.price, product.discount_amount),
   }));
+
+  return {
+    data: products,
+    meta: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total: result.total,
+      totalPages: Math.ceil(result.total / pagination.limit),
+    },
+  };
 }
 
 export async function getProductByIdService(id) {

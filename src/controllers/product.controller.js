@@ -2,7 +2,6 @@ import {
   createProductService,
   deleteProductService,
   getAllProductsService,
-  getAllProductsAdminService,
   getProductByIdService,
   updateProductService,
   toggleProductStatusService,
@@ -15,22 +14,11 @@ function createImageUrl(file) {
 
 export async function getAllProductsController(req, res, next) {
   try {
-    const products = await getAllProductsService();
+    const result = await getAllProductsService(req.query);
     return res.status(200).json({
       message: "Success get all products",
-      data: products,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getAllProductsAdminController(req, res, next) {
-  try {
-    const products = await getAllProductsAdminService();
-    return res.status(200).json({
-      message: "Success get all products",
-      data: products,
+      data: result.data,
+      meta: result.meta,
     });
   } catch (error) {
     next(error);

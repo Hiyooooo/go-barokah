@@ -6,14 +6,31 @@ const productRelations = {
 };
 
 export async function getAllProducts(filters = {}) {
-  const where = {};
-  if (filters.is_active !== undefined) {
-    where.is_active = filters.is_active;
+  const { search, pagination } = filters;
+  const where = search
+    ? { name: { contains: String(search).trim() } }
+    : {};
+
+  if (!pagination) {
+    return await prisma.product.findMany({
+      where,
+      orderBy: { id: "asc" },
+      include: productRelations,
+    });
   }
-  return await prisma.product.findMany({
-    where,
-    include: productRelations,
-  });
+
+  const [products, total] = await prisma.$transaction([
+    prisma.product.findMany({
+      where,
+      orderBy: { id: "asc" },
+      skip: pagination.skip,
+      take: pagination.limit,
+      include: productRelations,
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  return { products, total };
 }
 
 export async function findProductById(id) {
