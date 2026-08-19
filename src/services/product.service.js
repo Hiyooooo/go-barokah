@@ -3,6 +3,7 @@ import {
   deleteProduct,
   findProductById,
   getAllProducts,
+  getCriticalStockProducts,
   updateProduct,
 } from "../repositories/product.repository.js";
 import { findCategoryById } from "../repositories/category.repository.js";
@@ -180,8 +181,18 @@ function buildProductPagination(filters = {}) {
   return { page, limit, skip: (page - 1) * limit };
 }
 
+function parseCategoryIds(value) {
+  if (value === undefined || value === "") return undefined;
+
+  const values = Array.isArray(value) ? value : String(value).split(",");
+  const categoryIds = values.map((id) => parsePositiveInt(id.trim(), "category_id"));
+
+  return [...new Set(categoryIds)];
+}
+
 export async function getAllProductsService(filters = {}) {
   const pagination = buildProductPagination(filters);
+  const categoryIds = parseCategoryIds(filters.category_id);
   const search =
     filters.q === undefined ? undefined : String(filters.q).trim();
 
@@ -190,6 +201,7 @@ export async function getAllProductsService(filters = {}) {
   }
 
   const result = await getAllProducts({
+    categoryIds,
     search: search || undefined,
     pagination,
   });
@@ -207,6 +219,15 @@ export async function getAllProductsService(filters = {}) {
       totalPages: Math.ceil(result.total / pagination.limit),
     },
   };
+}
+
+export async function getCriticalStockProductsService() {
+  const products = await getCriticalStockProducts();
+
+  return products.map((product) => ({
+    ...product,
+    final_price: calculateFinalPrice(product.price, product.discount_amount),
+  }));
 }
 
 export async function getProductByIdService(id) {

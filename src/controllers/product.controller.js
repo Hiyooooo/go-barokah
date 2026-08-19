@@ -2,6 +2,7 @@ import {
   createProductService,
   deleteProductService,
   getAllProductsService,
+  getCriticalStockProductsService,
   getProductByIdService,
   updateProductService,
   toggleProductStatusService,
@@ -19,6 +20,18 @@ export async function getAllProductsController(req, res, next) {
       message: "Success get all products",
       data: result.data,
       meta: result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getCriticalStockProductsController(req, res, next) {
+  try {
+    const products = await getCriticalStockProductsService();
+    return res.status(200).json({
+      message: "Success get critical stock products",
+      data: products,
     });
   } catch (error) {
     next(error);

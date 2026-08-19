@@ -750,6 +750,12 @@ paths:
             maxLength: 100
           description: Search berdasarkan nama produk.
           example: indomie
+        - name: category_id
+          in: query
+          schema:
+            type: string
+          description: ID kategori yang dipilih, dipisahkan koma untuk multi-select.
+          example: "1,4,7"
         - name: page
           in: query
           schema:
@@ -802,6 +808,29 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/products/critical-stock:
+    get:
+      tags:
+        - Products
+      summary: Ambil produk dengan stok kritis
+      description: |
+        Mengambil produk aktif yang stoknya berada pada atau di bawah batas stok kritis
+        masing-masing produk (`stock <= critical_stock`). Hasil diurutkan berdasarkan
+        stok paling sedikit terlebih dahulu.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar produk dengan stok kritis.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriticalStockProductListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/products/{id}:
     parameters:
@@ -2776,6 +2805,17 @@ components:
             $ref: "#/components/schemas/Product"
         meta:
           $ref: "#/components/schemas/PaginationMeta"
+
+    CriticalStockProductListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get critical stock products
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
 
     ProductDeleteResponse:
       type: object
