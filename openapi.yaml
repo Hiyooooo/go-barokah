@@ -244,7 +244,7 @@ paths:
         Menghitung laba bersih melalui 3 saringan berurutan:
         - **Saringan 1 — Laba Kotor**: Omzet − HPP (modal barang dari `product.cost`)
         - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, TAX, OTHER)
-        - **Saringan 3 — Laba Bersih**: Laba Kotor − Total Biaya Operasional
+        - **Saringan 3 — Laba Bersih**: Laba Operasional + Pendapatan Ongkir
         - **DEPRECIATION** tidak termasuk biaya operasional dan tidak mengurangi laba bersih
       security:
         - bearerAuth: []
@@ -3562,6 +3562,10 @@ components:
           type: number
           description: Total omzet dari penjualan produk (itemsSubtotal, tidak termasuk ongkos kirim) dari order PAID.
           example: 150000000
+        shipping_fee:
+          type: number
+          description: Pendapatan ongkir dari order dalam periode, ditambahkan ke laba bersih.
+          example: 5000000
         cogs:
           type: number
           description: HPP — akumulasi `orderItem.totalCost` (unitCost × qty) dari semua order PAID dalam periode.
@@ -3613,7 +3617,7 @@ components:
           example: 1000000
         filter_3:
           type: object
-          description: "Saringan 3: Laba Bersih = Laba Kotor - Total Biaya Operasional"
+          description: "Saringan 3: Laba Bersih = Laba Operasional + Pendapatan Ongkir"
           properties:
             label:
               type: string

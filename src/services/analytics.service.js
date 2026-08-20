@@ -80,6 +80,7 @@ export async function getNetProfitService(filters = {}) {
     ]);
 
   const omzet = revenue._sum.itemsSubtotal ?? 0;
+  const shippingFee = revenue._sum.shippingFee ?? 0;
   const cogs = revenue._sum.totalCost ?? 0;
 
   const grossProfit = omzet - cogs;
@@ -89,7 +90,7 @@ export async function getNetProfitService(filters = {}) {
   const operatingProfit = grossProfit - operatingExpenses;
 
   const tax = taxResult._sum.amount ?? 0;
-  const netProfit = operatingProfit;
+  const netProfit = operatingProfit + shippingFee;
   const netMarginPercent = omzet > 0 ? (netProfit / omzet) * 100 : 0;
 
   const expenseBreakdown = breakdownByCategory
@@ -102,6 +103,7 @@ export async function getNetProfitService(filters = {}) {
   return {
     period: { start_date: filters.startDate, end_date: filters.endDate },
     omzet,
+    shipping_fee: shippingFee,
     cogs,
     filter_1: {
       label: "Gross Profit",
