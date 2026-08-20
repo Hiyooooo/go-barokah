@@ -6,12 +6,41 @@ const productRelations = {
 };
 
 export async function getAllProducts(filters = {}) {
-  const where = {};
-  if (filters.is_active !== undefined) {
-    where.is_active = filters.is_active;
+  const { categoryIds, search, pagination } = filters;
+  const where = {
+    ...(categoryIds?.length && { categoryId: { in: categoryIds } }),
+    ...(search && { name: { contains: String(search).trim() } }),
+  };
+
+  if (!pagination) {
+    return await prisma.product.findMany({
+      where,
+      orderBy: { id: "asc" },
+      include: productRelations,
+    });
   }
+
+  const [products, total] = await prisma.$transaction([
+    prisma.product.findMany({
+      where,
+      orderBy: { id: "asc" },
+      skip: pagination.skip,
+      take: pagination.limit,
+      include: productRelations,
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  return { products, total };
+}
+
+export async function getCriticalStockProducts() {
   return await prisma.product.findMany({
-    where,
+    where: {
+      is_active: true,
+      stock: { lte: prisma.product.fields.critical_stock },
+    },
+    orderBy: { stock: "asc" },
     include: productRelations,
   });
 }

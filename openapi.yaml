@@ -243,8 +243,9 @@ paths:
       description: |
         Menghitung laba bersih melalui 3 saringan berurutan:
         - **Saringan 1 — Laba Kotor**: Omzet − HPP (modal barang dari `product.cost`)
-        - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER)
-        - **Saringan 3 — Laba Bersih**: Laba Operasional − Pajak (kategori TAX)
+        - **Saringan 2 — Laba Operasional**: Laba Kotor − Biaya Operasional (SALARY, RENT, UTILITIES, TAX, OTHER)
+        - **Saringan 3 — Laba Bersih**: Laba Kotor − Total Biaya Operasional
+        - **DEPRECIATION** tidak termasuk biaya operasional dan tidak mengurangi laba bersih
       security:
         - bearerAuth: []
       parameters:
@@ -277,8 +278,10 @@ paths:
       summary: Lihat arus kas operasi
       description: |
         Menghitung arus kas operasi dalam periode yang dipilih:
-        - **Uang Masuk**: Total `grandTotal` dari order PAID (termasuk ongkos kirim)
-        - **Uang Keluar**: HPP (modal barang) + semua pengeluaran yang tercatat
+        - **Uang Masuk**: Total `grandTotal` dari order yang pembayarannya diterima (termasuk ongkos kirim)
+        - **Uang Keluar**: Pengeluaran kas yang tercatat dalam kategori SALARY, RENT, UTILITIES, TAX, dan OTHER
+        - **DEPRECIATION** tidak dihitung sebagai uang keluar karena merupakan biaya non-kas
+        - HPP tidak dihitung sebagai uang keluar karena pembayaran supplier belum dicatat secara terpisah
         - **Arus Kas Bersih**: Uang Masuk − Uang Keluar
         - **Status**: `POSITIVE` (positif), `BREAK_EVEN` (impas), atau `NEGATIVE` (negatif)
       security:
@@ -382,6 +385,10 @@ paths:
                 $ref: "#/components/schemas/RegisterResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/auth/login:
     post:
@@ -446,11 +453,12 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/otp/request:
+  /api/otp/email/request:
     post:
       tags:
         - OTP
       summary: Minta OTP email
+      description: Meminta OTP verifikasi email. Rate limit berlaku maksimal 1 request per 60 detik, 5 request per 15 menit, dan 10 request dalam rolling 24 jam.
       requestBody:
         required: true
         content:
@@ -470,6 +478,10 @@ paths:
                 message: Email OTP sent successfully
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -506,7 +518,7 @@ paths:
       tags:
         - OTP
       summary: Minta OTP WhatsApp
-      description: Mengirim OTP ke nomor WhatsApp user yang sedang login. Nomor dikirim melalui Fonnte. Membutuhkan Bearer token.
+      description: Mengirim OTP ke nomor WhatsApp user yang sedang login. Nomor dikirim melalui Fonnte. Membutuhkan Bearer token. Rate limit berlaku maksimal 1 request per 60 detik, 5 request per 15 menit, dan 10 request dalam rolling 24 jam.
       security:
         - bearerAuth: []
       responses:
@@ -524,6 +536,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/otp/phone/verify:
     post:
@@ -720,7 +736,43 @@ paths:
     get:
       tags:
         - Products
-      summary: Ambil semua produk
+      summary: Ambil daftar produk
+      description: |
+        Mengambil daftar produk dengan search dan pagination.
+        Produk dengan `is_active = false` tetap dikembalikan agar frontend dapat
+        menampilkannya sebagai produk yang sedang dinonaktifkan. Produk nonaktif
+        tetap tidak dapat dibeli.
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Search berdasarkan nama produk.
+          example: indomie
+        - name: category_id
+          in: query
+          schema:
+            type: string
+          description: ID kategori yang dipilih, dipisahkan koma untuk multi-select.
+          example: "1,4,7"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Nomor halaman.
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          description: Jumlah produk per halaman.
+          example: 10
       responses:
         "200":
           description: Daftar produk.
@@ -757,21 +809,24 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/products/admin/all:
+  /api/products/critical-stock:
     get:
       tags:
         - Products
-      summary: Ambil semua produk (Khusus Admin/Owner)
-      description: Mengambil seluruh produk, termasuk yang berstatus tidak aktif (is_active = false).
+      summary: Ambil produk dengan stok kritis
+      description: |
+        Mengambil produk aktif yang stoknya berada pada atau di bawah batas stok kritis
+        masing-masing produk (`stock <= critical_stock`). Hasil diurutkan berdasarkan
+        stok paling sedikit terlebih dahulu.
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Daftar seluruh produk.
+          description: Daftar produk dengan stok kritis.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProductListResponse"
+                $ref: "#/components/schemas/CriticalStockProductListResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2122,6 +2177,30 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             message: Internal server error
+    TooManyRequests:
+      description: Batas permintaan OTP terlampaui.
+      headers:
+        Retry-After:
+          description: Jumlah detik sebelum client dapat mencoba kembali.
+          schema:
+            type: integer
+            minimum: 1
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: Please wait before requesting another OTP
+            retry_after_seconds: 60
+    ServiceUnavailable:
+      description: Layanan OTP tidak tersedia karena Redis tidak dapat diakses.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            message: OTP service is temporarily unavailable
 
   schemas:
     MessageResponse:
@@ -2137,6 +2216,10 @@ components:
       properties:
         message:
           type: string
+        retry_after_seconds:
+          type: integer
+          minimum: 1
+          description: Jumlah detik sebelum client dapat mencoba kembali. Hanya dikirim untuk response 429 tertentu.
       required:
         - message
 
@@ -2672,6 +2755,9 @@ components:
           example: /uploads/products/1778020496326-product.jpg
         stock:
           type: integer
+        is_active:
+          type: boolean
+          description: Status produk. Jika false, produk tetap ditampilkan tetapi tidak dapat dibeli.
         discount_amount:
           type: integer
           minimum: 0
@@ -2713,6 +2799,19 @@ components:
         message:
           type: string
           example: Success get all products
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CriticalStockProductListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get critical stock products
         data:
           type: array
           items:
@@ -3416,7 +3515,7 @@ components:
           $ref: "#/components/schemas/AnalyticsPeriod"
         omzet:
           type: number
-          description: Total omzet dari penjualan produk (itemsSubtotal), tidak termasuk ongkos kirim.
+          description: Total omzet dari penjualan produk dengan harga setelah diskon (itemsSubtotal), tidak termasuk ongkos kirim.
           example: 15000000
         total_discount:
           type: number
@@ -3485,8 +3584,8 @@ components:
           properties:
             total:
               type: number
-              description: Total biaya operasional (SALARY, RENT, UTILITIES, DEPRECIATION, OTHER — tidak termasuk TAX).
-              example: 21000000
+              description: Total biaya operasional (SALARY, RENT, UTILITIES, TAX, OTHER — tidak termasuk DEPRECIATION).
+              example: 22000000
             breakdown:
               type: array
               description: Rincian pengeluaran per kategori dalam periode (mencakup semua kategori termasuk TAX, untuk keperluan tampilan).
@@ -3500,21 +3599,21 @@ components:
                     example: 12000000
         filter_2:
           type: object
-          description: "Saringan 2: Laba Operasional = Laba Kotor - Biaya Operasional"
+          description: "Saringan 2: Laba Operasional = Laba Kotor - seluruh Biaya Operasional termasuk TAX"
           properties:
             label:
               type: string
               example: Operating Profit
             value:
               type: number
-              example: 34000000
+              example: 33000000
         tax:
           type: number
-          description: Total pajak (kategori TAX).
+          description: Total pajak (kategori TAX), sudah termasuk dalam operating_expenses.
           example: 1000000
         filter_3:
           type: object
-          description: "Saringan 3: Laba Bersih = Laba Operasional - Pajak"
+          description: "Saringan 3: Laba Bersih = Laba Kotor - Total Biaya Operasional"
           properties:
             label:
               type: string
@@ -3552,21 +3651,19 @@ components:
           properties:
             total:
               type: number
-              description: Total uang keluar (HPP + semua pengeluaran).
-              example: 40000000
+              description: Total pengeluaran kas yang tercatat, tidak termasuk HPP dan DEPRECIATION.
+              example: 10000000
             breakdown:
               type: object
               properties:
-                cogs:
-                  type: number
-                  example: 30000000
                 operating_expenses:
                   type: number
+                  description: Total SALARY, RENT, UTILITIES, TAX, dan OTHER.
                   example: 10000000
         net_cash_flow:
           type: number
           description: Selisih uang masuk dikurangi uang keluar.
-          example: 15000000
+          example: 45000000
         status:
           type: string
           enum: [POSITIVE, BREAK_EVEN, NEGATIVE]

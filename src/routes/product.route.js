@@ -3,7 +3,7 @@ import {
   createProductController,
   deleteProductController,
   getAllProductsController,
-  getAllProductsAdminController,
+  getCriticalStockProductsController,
   getProductByIdController,
   updateProductController,
   toggleProductStatusController,
@@ -14,14 +14,13 @@ import { uploadProductImage } from "../middlewares/upload.middleware.js";
 const router = express.Router();
 
 router.get("/", getAllProductsController);
-router.get("/:id", getProductByIdController);
-
 router.get(
-  "/admin/all",
+  "/critical-stock",
   authRequired,
   authorization("admin", "owner"),
-  getAllProductsAdminController,
+  getCriticalStockProductsController,
 );
+router.get("/:id", getProductByIdController);
 
 router.post(
   "/",

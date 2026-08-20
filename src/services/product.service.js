@@ -3,6 +3,7 @@ import {
   deleteProduct,
   findProductById,
   getAllProducts,
+  getCriticalStockProducts,
   updateProduct,
 } from "../repositories/product.repository.js";
 import { findCategoryById } from "../repositories/category.repository.js";
@@ -20,6 +21,10 @@ import {
   parsePositiveInt,
   sendLowStockAlertEmail,
 } from "../utils/index.js";
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
 
 function parseProductId(id) {
   return parsePositiveInt(id, "product id");
@@ -165,19 +170,60 @@ function validateProductPayload(payload, { isUpdate = false } = {}) {
   return data;
 }
 
+function buildProductPagination(filters = {}) {
+  const page = parsePositiveInt(filters.page ?? DEFAULT_PAGE, "page");
+  const limit = parsePositiveInt(filters.limit ?? DEFAULT_LIMIT, "limit");
+
+  if (limit > MAX_LIMIT) {
+    throw badRequest(`limit must be less than or equal to ${MAX_LIMIT}`);
+  }
+
+  return { page, limit, skip: (page - 1) * limit };
+}
+
+function parseCategoryIds(value) {
+  if (value === undefined || value === "") return undefined;
+
+  const values = Array.isArray(value) ? value : String(value).split(",");
+  const categoryIds = values.map((id) => parsePositiveInt(id.trim(), "category_id"));
+
+  return [...new Set(categoryIds)];
+}
+
 export async function getAllProductsService(filters = {}) {
-  const resolvedFilters = {
-    ...filters,
-  };
-  const products = await getAllProducts(resolvedFilters);
-  return products.map((product) => ({
+  const pagination = buildProductPagination(filters);
+  const categoryIds = parseCategoryIds(filters.category_id);
+  const search =
+    filters.q === undefined ? undefined : String(filters.q).trim();
+
+  if (search && search.length > 100) {
+    throw badRequest("q must be 100 characters or less");
+  }
+
+  const result = await getAllProducts({
+    categoryIds,
+    search: search || undefined,
+    pagination,
+  });
+  const products = result.products.map((product) => ({
     ...product,
     final_price: calculateFinalPrice(product.price, product.discount_amount),
   }));
+
+  return {
+    data: products,
+    meta: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total: result.total,
+      totalPages: Math.ceil(result.total / pagination.limit),
+    },
+  };
 }
 
-export async function getAllProductsAdminService() {
-  const products = await getAllProducts();
+export async function getCriticalStockProductsService() {
+  const products = await getCriticalStockProducts();
+
   return products.map((product) => ({
     ...product,
     final_price: calculateFinalPrice(product.price, product.discount_amount),

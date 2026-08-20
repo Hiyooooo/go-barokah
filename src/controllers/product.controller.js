@@ -2,7 +2,7 @@ import {
   createProductService,
   deleteProductService,
   getAllProductsService,
-  getAllProductsAdminService,
+  getCriticalStockProductsService,
   getProductByIdService,
   updateProductService,
   toggleProductStatusService,
@@ -15,21 +15,22 @@ function createImageUrl(file) {
 
 export async function getAllProductsController(req, res, next) {
   try {
-    const products = await getAllProductsService();
+    const result = await getAllProductsService(req.query);
     return res.status(200).json({
       message: "Success get all products",
-      data: products,
+      data: result.data,
+      meta: result.meta,
     });
   } catch (error) {
     next(error);
   }
 }
 
-export async function getAllProductsAdminController(req, res, next) {
+export async function getCriticalStockProductsController(req, res, next) {
   try {
-    const products = await getAllProductsAdminService();
+    const products = await getCriticalStockProductsService();
     return res.status(200).json({
-      message: "Success get all products",
+      message: "Success get critical stock products",
       data: products,
     });
   } catch (error) {

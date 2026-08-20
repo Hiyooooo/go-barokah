@@ -13,6 +13,7 @@ import {
 } from "../utils/midtrans.js";
 import { badRequest, forbidden, notFound } from "../utils/index.js";
 import { parsePositiveInt } from "../utils/index.js";
+import { notifyOrderStatusChanged } from "./order-notification.service.js";
 
 export async function initiatePaymentService(userId, orderId) {
   const parsedId = parsePositiveInt(orderId, "order id");
@@ -166,7 +167,10 @@ export async function handleMidtransNotificationService(payload) {
       paymentStatus: "PAID",
       paidAt: new Date(),
     });
-    await updateOrderStatus(order.id, { status: "PROCESSING" });
+    const updatedOrder = await updateOrderStatus(order.id, {
+      status: "PROCESSING",
+    });
+    await notifyOrderStatusChanged(updatedOrder, "PROCESSING");
   } else if (
     transaction_status === "pending" ||
     (transaction_status === "capture" && fraud_status === "challenge")

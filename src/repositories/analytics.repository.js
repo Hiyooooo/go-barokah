@@ -16,11 +16,11 @@ export async function getRevenueAggregation(startDate, endDate) {
       ],
     },
     _sum: {
-      grandTotal:    true,
+      grandTotal: true,
       itemsSubtotal: true,
-      shippingFee:   true,
-      totalCost:     true,
-      grossProfit:   true,
+      shippingFee: true,
+      totalCost: true,
+      grossProfit: true,
       discountTotal: true,
     },
     _count: { id: true },
@@ -46,9 +46,9 @@ export async function getRevenuePerProduct(startDate, endDate) {
       },
     },
     _sum: {
-      quantity:    true,
-      subtotal:    true,
-      totalCost:   true,
+      quantity: true,
+      subtotal: true,
+      totalCost: true,
       grossProfit: true,
     },
     orderBy: { _sum: { subtotal: "desc" } },
@@ -70,9 +70,8 @@ export async function getCashInflowAggregation(startDate, endDate) {
       ],
     },
     _sum: {
-      grandTotal:  true,
+      grandTotal: true,
       shippingFee: true,
-      totalCost:   true,
     },
   });
 }

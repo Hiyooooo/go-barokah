@@ -14,6 +14,7 @@ import {
   verifiedPhone,
 } from "../repositories/user.repository.js";
 import { sendOtpEmail } from "../utils/mailer.js";
+import { consumeOtpRequestLimit } from "./otp-rate-limit.service.js";
 
 import { badRequest, notFound } from "../utils/index.js";
 import { sendWhatsappOtp } from "../utils/fonnte.js";
@@ -71,6 +72,13 @@ async function sendEmailOtp(existingUser) {
     throw badRequest("Email already verified");
   }
 
+  await consumeOtpRequestLimit("email", existingUser.email);
+
+  const activeOtp = await findActiveOtpByUserId(existingUser.id, OTP_TYPE_EMAIL);
+  if (activeOtp) {
+    await invalidateOtp(activeOtp.id);
+  }
+
   const { plainOtp, expiresAt } = await issueOtp(
     existingUser.id,
     OTP_TYPE_EMAIL,
@@ -97,6 +105,13 @@ async function sendPhoneNumberOtp(existingUser) {
   const isPhoneNumberVerified = await verifiedPhone(existingUser.id);
   if (isPhoneNumberVerified) {
     throw badRequest("Phone number already verified");
+  }
+
+  await consumeOtpRequestLimit("phone", existingUser.id);
+
+  const activeOtp = await findActiveOtpByUserId(existingUser.id, OTP_TYPE_PHONE);
+  if (activeOtp) {
+    await invalidateOtp(activeOtp.id);
   }
 
   const { plainOtp, expiresAt } = await issueOtp(

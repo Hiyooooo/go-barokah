@@ -58,6 +58,64 @@ export async function sendOtpEmail({ to, otp }) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export async function sendOrderStatusEmail({ to, order, status, message }) {
+  const itemRows = order.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">${escapeHtml(item.productName)}</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.quantity}</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">${escapeHtml(formatRupiah(item.subtotal))}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #0f172a;">
+      <h2>Update Pesanan Go Barokah</h2>
+      <p>${escapeHtml(message).replaceAll("\n", "<br>")}</p>
+      <p><strong>Nomor pesanan:</strong> ${escapeHtml(order.orderNumber)}</p>
+      <p><strong>Status:</strong> ${escapeHtml(status)}</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 8px 0;">Produk</th>
+            <th style="text-align: center; padding: 8px 0;">Qty</th>
+            <th style="text-align: right; padding: 8px 0;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <p><strong>Total pesanan:</strong> ${escapeHtml(formatRupiah(order.grandTotal))}</p>
+      <p>Terima kasih telah berbelanja di Go Barokah.</p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"Go Barokah" <${process.env.MAIL_USER}>`,
+    to,
+    subject: `Update pesanan ${order.orderNumber} - ${status}`,
+    html,
+  });
+}
+
+function formatRupiah(value) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
+
 export async function sendLowStockAlertEmail({ products }) {
   if (!products || products.length === 0) return;
 
