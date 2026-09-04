@@ -1,23 +1,25 @@
-import express from "express"
-import { authorization, authRequired } from "../middlewares/auth.middleware.js"
+import express from "express";
+import { authorization, authRequired } from "../middlewares/auth.middleware.js";
 import {
-    getAllAdminAccountController,
-    getAllUserAccountController,
-    removeAdminController,
-    setAdminController
-} from "../controllers/employee.controller.js"
+  getAllAdminAccountController,
+  getAllUserAccountController,
+  removeAdminController,
+  setAdminController,
+  setCashierController,
+} from "../controllers/employee.controller.js";
 
-const router = express.Router()
+const router = express.Router();
 
-router.use(authRequired)
-router.use(authorization("owner"))
+router.use(authRequired);
+router.use(authorization("owner"));
 
-router.get("/users", getAllUserAccountController)
+router.get("/users", getAllUserAccountController);
 
-router.get("/admins", getAllAdminAccountController)
+router.get("/admins", getAllAdminAccountController);
 
-router.patch("/promote", setAdminController)
+router.patch("/promote", setAdminController);
+router.patch("/cashier", setCashierController);
 
-router.patch("/demote", removeAdminController)
+router.patch("/demote", removeAdminController);
 
-export default router
+export default router;

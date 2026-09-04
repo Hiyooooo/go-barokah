@@ -21,7 +21,9 @@ export async function getCartController(req, res, next) {
 
 export async function createCartItemController(req, res, next) {
   try {
-    const result = await createCartItemService(req.user.id, req.body);
+    const result = await createCartItemService(req.user.id, req.body, {
+      allowCriticalStock: req.user.role === "cashier",
+    });
 
     return res.status(201).json({
       message: "Success add product to cart",
@@ -38,6 +40,7 @@ export async function updateCartItemController(req, res, next) {
       req.user.id,
       req.params.productId,
       req.body,
+      { allowCriticalStock: req.user.role === "cashier" },
     );
 
     return res.status(200).json({
@@ -51,7 +54,10 @@ export async function updateCartItemController(req, res, next) {
 
 export async function deleteCartItemController(req, res, next) {
   try {
-    const result = await deleteCartItemService(req.user.id, req.params.productId);
+    const result = await deleteCartItemService(
+      req.user.id,
+      req.params.productId,
+    );
 
     return res.status(200).json({
       message: "Success delete cart item",

@@ -4,6 +4,10 @@ import {
   getRevenuePerProduct,
 } from "../repositories/analytics.repository.js";
 import {
+  getCashSaleAggregation,
+  getCashSalePerProduct,
+} from "../repositories/cash-sale.repository.js";
+import {
   groupExpensesByCategory,
   getExpensesTrendMonthly,
   sumExpensesByDateRange,
@@ -32,24 +36,47 @@ function parseDateRange(startDate, endDate) {
 export async function getOmzetService(filters = {}) {
   const { start, end } = parseDateRange(filters.startDate, filters.endDate);
 
-  const [revenue, perProduct] = await Promise.all([
+  const [revenue, perProduct, cashRevenue, cashPerProduct] = await Promise.all([
     getRevenueAggregation(start, end),
     getRevenuePerProduct(start, end),
+    getCashSaleAggregation(start, end),
+    getCashSalePerProduct(start, end),
   ]);
 
-  const omzet = revenue._sum.itemsSubtotal ?? 0;
-  const totalDiscount = revenue._sum.discountTotal ?? 0;
-  const totalTransactions = revenue._count.id ?? 0;
+  const omzet =
+    (revenue._sum.itemsSubtotal ?? 0) + (cashRevenue._sum.subtotal ?? 0);
+  const totalDiscount =
+    (revenue._sum.discountTotal ?? 0) + (cashRevenue._sum.discountTotal ?? 0);
+  const totalTransactions =
+    (revenue._count.id ?? 0) + (cashRevenue._count.id ?? 0);
   const averagePerTransaction =
     totalTransactions > 0 ? omzet / totalTransactions : 0;
 
-  const perProductFormatted = perProduct.map((p) => ({
+  const productRows = [...perProduct, ...cashPerProduct];
+  const productTotals = new Map();
+  for (const p of productRows) {
+    const key = `${p.productId}:${p.productName}`;
+    const current = productTotals.get(key) ?? {
+      productId: p.productId,
+      productName: p.productName,
+      qty: 0,
+      revenue: 0,
+      cogs: 0,
+      profit: 0,
+    };
+    current.qty += p._sum.quantity ?? 0;
+    current.revenue += p._sum.subtotal ?? 0;
+    current.cogs += p._sum.totalCost ?? 0;
+    current.profit += p._sum.grossProfit ?? 0;
+    productTotals.set(key, current);
+  }
+  const perProductFormatted = [...productTotals.values()].map((p) => ({
     product_id: p.productId,
     product_name: p.productName,
-    qty_sold: p._sum.quantity ?? 0,
-    revenue: p._sum.subtotal ?? 0,
-    cogs: p._sum.totalCost ?? 0,
-    gross_profit: p._sum.grossProfit ?? 0,
+    qty_sold: p.qty,
+    revenue: p.revenue,
+    cogs: p.cogs,
+    gross_profit: p.profit,
   }));
 
   return {
@@ -65,23 +92,31 @@ export async function getOmzetService(filters = {}) {
 export async function getNetProfitService(filters = {}) {
   const { start, end } = parseDateRange(filters.startDate, filters.endDate);
 
-  const [revenue, operatingExpenseResult, taxResult, breakdownByCategory] =
-    await Promise.all([
-      getRevenueAggregation(start, end),
-      sumExpensesByDateRange(start, end, [
-        "SALARY",
-        "RENT",
-        "UTILITIES",
-        "TAX",
-        "OTHER",
-      ]),
-      sumExpensesByDateRange(start, end, ["TAX"]),
-      groupExpensesByCategory(start, end),
-    ]);
+  const [
+    revenue,
+    cashRevenue,
+    operatingExpenseResult,
+    taxResult,
+    breakdownByCategory,
+  ] = await Promise.all([
+    getRevenueAggregation(start, end),
+    getCashSaleAggregation(start, end),
+    sumExpensesByDateRange(start, end, [
+      "SALARY",
+      "RENT",
+      "UTILITIES",
+      "TAX",
+      "OTHER",
+    ]),
+    sumExpensesByDateRange(start, end, ["TAX"]),
+    groupExpensesByCategory(start, end),
+  ]);
 
-  const omzet = revenue._sum.itemsSubtotal ?? 0;
+  const omzet =
+    (revenue._sum.itemsSubtotal ?? 0) + (cashRevenue._sum.subtotal ?? 0);
   const shippingFee = revenue._sum.shippingFee ?? 0;
-  const cogs = revenue._sum.totalCost ?? 0;
+  const cogs =
+    (revenue._sum.totalCost ?? 0) + (cashRevenue._sum.totalCost ?? 0);
 
   const grossProfit = omzet - cogs;
   const grossMarginPercent = omzet > 0 ? (grossProfit / omzet) * 100 : 0;
@@ -130,8 +165,9 @@ export async function getNetProfitService(filters = {}) {
 export async function getCashFlowService(filters = {}) {
   const { start, end } = parseDateRange(filters.startDate, filters.endDate);
 
-  const [cashIn, expenseResult] = await Promise.all([
+  const [cashIn, cashSaleIn, expenseResult] = await Promise.all([
     getCashInflowAggregation(start, end),
+    getCashSaleAggregation(start, end),
     sumExpensesByDateRange(start, end, [
       "SALARY",
       "RENT",
@@ -141,7 +177,8 @@ export async function getCashFlowService(filters = {}) {
     ]),
   ]);
 
-  const totalInflow = cashIn._sum.grandTotal ?? 0;
+  const totalInflow =
+    (cashIn._sum.grandTotal ?? 0) + (cashSaleIn._sum.grandTotal ?? 0);
   const shippingFee = cashIn._sum.shippingFee ?? 0;
   const productRevenue = totalInflow - shippingFee;
 

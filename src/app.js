@@ -15,6 +15,7 @@ import paymentRoute from "./routes/payment.route.js";
 import expenseRoute from "./routes/expense.route.js";
 import analyticsRoute from "./routes/analytics.route.js";
 import employee from "./routes/employee.route.js";
+import cashSaleRoute from "./routes/cash-sale.route.js";
 import { authRequired } from "./middlewares/auth.middleware.js";
 import { errorHandler } from "./middlewares/error.handler.js";
 
@@ -58,6 +59,7 @@ app.use("/api/products/category", categoryRoute);
 app.use("/api/products/type", typeRoute);
 app.use("/api/products", productRoute);
 app.use("/api/carts", cartRoute);
+app.use("/api/cash-sales", cashSaleRoute);
 app.use("/api/orders", orderRoute);
 app.use("/api/admin/orders", ownerOrderRoute);
 app.use("/api/users", userRoute);

@@ -89,7 +89,7 @@ async function getOrCreateCart(userId) {
   return cart;
 }
 
-async function validateProductAndStock(productId, quantity) {
+async function validateProductAndStock(productId, quantity, { allowCriticalStock = false } = {}) {
   const product = await findProductById(productId);
   if (!product) {
     throw notFound("Product not found");
@@ -99,7 +99,7 @@ async function validateProductAndStock(productId, quantity) {
     throw badRequest("Product is no longer available");
   }
 
-if (product.stock <= (product.critical_stock ?? 10)) {
+ if (!allowCriticalStock && product.stock <= (product.critical_stock ?? 10)) {
   throw badRequest("Product stock is critically low and cannot be purchased");
 }
 
@@ -123,11 +123,11 @@ export async function getCartService(userId) {
   return buildCartResponse(cart);
 }
 
-export async function createCartItemService(userId, payload) {
+export async function createCartItemService(userId, payload, options = {}) {
   const productId = parseProductId(payload.product_id);
   const quantity = parseQuantity(payload.quantity ?? 1);
 
-  const product = await validateProductAndStock(productId, quantity);
+  const product = await validateProductAndStock(productId, quantity, options);
 
   const cart = await getOrCreateCart(userId);
 
@@ -151,7 +151,7 @@ export async function createCartItemService(userId, payload) {
 
   return getCartService(userId);
 }
-export async function updateCartItemService(userId, productId, payload) {
+export async function updateCartItemService(userId, productId, payload, options = {}) {
   const parsedProductId = parseProductId(productId);
   const quantity = parseQuantity(payload.quantity);
 
@@ -165,7 +165,7 @@ export async function updateCartItemService(userId, productId, payload) {
     throw notFound("Cart item not found");
   }
 
-  const product = await validateProductAndStock(parsedProductId, quantity);
+  const product = await validateProductAndStock(parsedProductId, quantity, options);
 
   if (quantity > product.stock) {
     throw badRequest("Quantity exceeds product stock");

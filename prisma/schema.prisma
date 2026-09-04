@@ -24,6 +24,7 @@ model User {
   otps      Otp[]
   cart      Cart?
   orders    Order[]
+  cashSales CashSale[]
 
   @@map("users")
 }
@@ -90,6 +91,7 @@ model Product {
   type       Type        @relation(fields: [typeId], references: [id], onDelete: Cascade)
   cartItems  CartItem[]
   orderItems OrderItem[]
+  cashSaleItems CashSaleItem[]
 
   @@index([categoryId])
   @@index([typeId])
@@ -241,4 +243,48 @@ model Expense {
   @@index([date])
   @@index([category])
   @@map("expenses")
+}
+
+model CashSale {
+  id            Int      @id @default(autoincrement())
+  cashierId     String   @map("cashier_id") @db.Char(36)
+  saleNumber    String   @unique @map("sale_number") @db.VarChar(100)
+  paymentMethod String   @default("CASH") @map("payment_method") @db.VarChar(30)
+  subtotal      Float
+  discountTotal Float    @default(0) @map("discount_total")
+  grandTotal    Float    @map("grand_total")
+  cashReceived  Float    @map("cash_received")
+  changeAmount  Float    @map("change_amount")
+  totalCost     Float    @default(0) @map("total_cost")
+  grossProfit   Float    @default(0) @map("gross_profit")
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  cashier User          @relation(fields: [cashierId], references: [id], onDelete: Restrict)
+  items   CashSaleItem[]
+
+  @@index([cashierId])
+  @@index([createdAt])
+  @@map("cash_sales")
+}
+
+model CashSaleItem {
+  id             Int      @id @default(autoincrement())
+  cashSaleId     Int      @map("cash_sale_id")
+  productId      Int?     @map("product_id")
+  productName    String   @map("product_name") @db.VarChar(255)
+  quantity       Int
+  unitPrice      Float    @map("unit_price")
+  discountAmount Int      @default(0) @map("discount_amount")
+  finalUnitPrice Float    @map("final_unit_price")
+  subtotal       Float
+  totalCost      Float    @default(0) @map("total_cost")
+  grossProfit    Float    @default(0) @map("gross_profit")
+
+  cashSale CashSale @relation(fields: [cashSaleId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([cashSaleId])
+  @@index([productId])
+  @@map("cash_sale_items")
 }

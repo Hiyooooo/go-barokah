@@ -24,7 +24,9 @@ tags:
   - name: Types
     description: Master data tipe produk. Hanya admin atau owner.
   - name: Cart
-    description: Keranjang belanja pengguna. Summary cart hanya menghitung total barang; ongkir dan grand total dihitung di checkout setelah alamat dipilih.
+    description: Keranjang belanja user, admin, atau cashier. Cashier dapat memakai cart untuk transaksi offline tanpa batas stok kritis.
+  - name: Cash Sales
+    description: Transaksi penjualan offline melalui aplikasi mobile/tablet cashier. Pembayaran dicatat sebagai cash dan tidak menggunakan payment gateway.
   - name: Orders
     description: Checkout cart menjadi order dan riwayat order milik pengguna.
   - name: Admin Orders
@@ -1259,8 +1261,94 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+         "404":
+           $ref: "#/components/responses/NotFound"
+
+  /api/cash-sales:
+    post:
+      tags:
+        - Cash Sales
+      summary: Buat transaksi penjualan cash
+      description: |
+        Membuat transaksi offline dari cart item yang dipilih oleh cashier.
+        Harga, diskon, total, dan stok selalu divalidasi ulang oleh backend.
+        Transaksi mengurangi stok aktual tanpa menerapkan batas `critical_stock`,
+        menyimpan transaksi dan item, lalu menghapus item terjual dari cart.
+        `cash_received` harus lebih besar atau sama dengan grand total.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashSaleCreateRequest"
+            example:
+              cart_item_ids: [12, 15]
+              cash_received: 100000
+              notes: Pembelian langsung di toko
+      responses:
+        "201":
+          description: Transaksi cash berhasil dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashSaleCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/cash-sales/{saleNumber}:
+    parameters:
+      - $ref: "#/components/parameters/CashSaleNumber"
+    get:
+      tags:
+        - Cash Sales
+      summary: Ambil detail transaksi untuk struk Flutter
+      description: Mengambil data transaksi milik cashier yang sedang login. Gunakan response ini untuk preview atau membuat format struk di aplikasi Flutter.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Detail transaksi berhasil diambil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashSaleDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/cash-sales/{saleNumber}/receipt:
+    parameters:
+      - $ref: "#/components/parameters/CashSaleNumber"
+    get:
+      tags:
+        - Cash Sales
+      summary: Ambil receipt HTML
+      description: Fallback untuk print melalui browser. Aplikasi Flutter sebaiknya menggunakan endpoint detail JSON dan menangani tampilan serta printer di sisi aplikasi.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: HTML receipt siap ditampilkan atau dicetak.
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/orders:
     post:
       tags:
@@ -2045,6 +2133,44 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/owner/employee/cashier:
+    patch:
+      tags:
+        - Employee
+      summary: Assign role cashier
+      description: Mengubah role akun terdaftar menjadi `cashier`. Hanya dapat diakses oleh owner.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeEmailRequest"
+            example:
+              email: cashier@example.com
+      responses:
+        "200":
+          description: Akun berhasil ditetapkan sebagai cashier.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Successfully assigned account to cashier
+                  data:
+                    $ref: "#/components/schemas/AccountSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2093,6 +2219,14 @@ components:
         type: integer
         minimum: 1
       example: 1
+    CashSaleNumber:
+      name: saleNumber
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      example: SALE-20260903-100000-1234
     OrderId:
       name: id
       in: path
@@ -2235,7 +2369,7 @@ components:
           example: budi@example.com
         role:
           type: string
-          enum: [user, admin, owner]
+           enum: [user, admin, owner, cashier]
           example: user
 
     EmployeeEmailRequest:
@@ -2264,7 +2398,7 @@ components:
           example: budi@example.com
         role:
           type: string
-          enum: [user, admin, owner]
+           enum: [user, admin, owner, cashier]
           example: admin
         phoneNumber:
           type: string
@@ -2875,6 +3009,154 @@ components:
           minimum: 1
       required:
         - quantity
+
+    CashSaleCreateRequest:
+      type: object
+      description: Data transaksi offline yang dikirim oleh aplikasi Flutter cashier.
+      properties:
+        cart_item_ids:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+          description: ID cart item yang akan dijual.
+        cash_received:
+          type: number
+          format: float
+          minimum: 0
+          description: Nominal uang cash yang diterima dari pembeli.
+          example: 100000
+        notes:
+          type: string
+          nullable: true
+          description: Catatan opsional transaksi.
+      required:
+        - cart_item_ids
+        - cash_received
+
+    CashSaleCreateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success create cash sale
+        data:
+          $ref: "#/components/schemas/CashSaleDatabaseRecord"
+
+    CashSaleDetailResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get cash sale
+        data:
+          $ref: "#/components/schemas/CashSaleReceipt"
+
+    CashSaleReceipt:
+      type: object
+      description: Data receipt yang digunakan Flutter untuk preview dan print struk.
+      properties:
+        sale_number:
+          type: string
+          example: SALE-20260903-100000-1234
+        created_at:
+          type: string
+          format: date-time
+        cashier:
+          type: object
+          properties:
+            name:
+              type: string
+        payment_method:
+          type: string
+          enum: [CASH]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashSaleReceiptItem"
+        subtotal:
+          type: number
+          format: float
+        discount_total:
+          type: number
+          format: float
+        grand_total:
+          type: number
+          format: float
+        cash_received:
+          type: number
+          format: float
+        change_amount:
+          type: number
+          format: float
+        notes:
+          type: string
+          nullable: true
+
+    CashSaleReceiptItem:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          nullable: true
+        product_name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price:
+          type: number
+          format: float
+        discount_amount:
+          type: integer
+          minimum: 0
+          maximum: 100
+        final_unit_price:
+          type: number
+          format: float
+        subtotal:
+          type: number
+          format: float
+
+    CashSaleDatabaseRecord:
+      type: object
+      description: Record transaksi setelah dibuat. Field internal dapat ikut dikembalikan oleh endpoint create.
+      properties:
+        id:
+          type: integer
+        cashierId:
+          type: string
+          format: uuid
+        saleNumber:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [CASH]
+        subtotal:
+          type: number
+        discountTotal:
+          type: number
+        grandTotal:
+          type: number
+        cashReceived:
+          type: number
+        changeAmount:
+          type: number
+        totalCost:
+          type: number
+        grossProfit:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            type: object
 
     CartItem:
       type: object

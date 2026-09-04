@@ -11,7 +11,7 @@ import { authRequired, authorization } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 
 router.use(authRequired);
-router.use(authorization("user", "admin"));
+router.use(authorization("user", "admin", "cashier"));
 
 router.get("/", getCartController);
 router.post("/items", createCartItemController);
