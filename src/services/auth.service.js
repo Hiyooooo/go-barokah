@@ -6,7 +6,7 @@ import {
 } from "../repositories/user.repository.js";
 import { requestEmailOtpByUserId } from "./otp.service.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
-import { signToken } from "../utils/jwt.js";
+import { revokeToken, signToken } from "../utils/jwt.js";
 import { OAuth2Client } from "google-auth-library";
 
 import { badRequest, isEmail, isValidPhone } from "../utils/index.js";
@@ -24,6 +24,11 @@ export function sanitizeUser(account) {
     role: account.role,
     createdAt: account.createdAt,
   };
+}
+
+export async function logoutService(token) {
+  if (!token) throw badRequest("Authentication token is required");
+  await revokeToken(token);
 }
 
 export async function registerService({

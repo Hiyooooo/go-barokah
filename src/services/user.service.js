@@ -1,9 +1,16 @@
 import {
   findUserById,
   findUserByPhone,
+  getUserProfile,
   updateAccount,
 } from "../repositories/user.repository.js";
 import { badRequest, isValidPhone, notFound } from "../utils/index.js";
+
+export async function getMyProfileService(userId) {
+  const profile = await getUserProfile(userId);
+  if (!profile) throw notFound("User not found");
+  return profile;
+}
 
 export async function updateAccountService(userId, payload) {
   if (!payload.username || !payload.username.trim()) {

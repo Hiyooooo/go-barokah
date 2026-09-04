@@ -1,15 +1,32 @@
 import { findCartByUserId } from "../repositories/cart.repository.js";
 import {
   createCashSale,
+  findCashSaleByIdempotencyKey,
   findCashSaleByNumberAndCashier,
+  findCashSalesByCashier,
 } from "../repositories/cash-sale.repository.js";
-import { badRequest, notFound, parsePositiveInt } from "../utils/index.js";
+import {
+  badRequest,
+  conflict,
+  notFound,
+  parsePositiveInt,
+} from "../utils/index.js";
+import { createHash } from "node:crypto";
 
 function saleNumber() {
   return `SALE-${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${Math.floor(Math.random() * 9000 + 1000)}`;
 }
 
-export async function createCashSaleService(cashierId, payload = {}) {
+export async function createCashSaleService(
+  cashierId,
+  payload = {},
+  idempotencyKey,
+) {
+  const normalizedKey = String(idempotencyKey ?? "").trim();
+  if (!normalizedKey || normalizedKey.length > 100) {
+    throw badRequest("Idempotency-Key header is required and must be 100 characters or less");
+  }
+
   const ids = Array.isArray(payload.cart_item_ids)
     ? payload.cart_item_ids.map((id) => parsePositiveInt(id, "cart_item_id"))
     : [];
@@ -19,6 +36,25 @@ export async function createCashSaleService(cashierId, payload = {}) {
 
   if (new Set(ids).size !== ids.length)
     throw badRequest("cart_item_ids must not contain duplicate items");
+
+  const requestFingerprint = createHash("sha256")
+    .update(JSON.stringify({
+      cart_item_ids: ids,
+      cash_received: payload.cash_received,
+      notes: payload.notes ? String(payload.notes).trim() : null,
+    }))
+    .digest("hex");
+
+  const previousSale = await findCashSaleByIdempotencyKey(normalizedKey);
+  if (previousSale) {
+    if (previousSale.cashierId !== cashierId) {
+      throw conflict("Idempotency-Key is already in use");
+    }
+    if (previousSale.requestFingerprint !== requestFingerprint) {
+      throw conflict("Idempotency-Key was already used with a different request");
+    }
+    return previousSale;
+  }
 
   const cashReceived = Number(payload.cash_received);
 
@@ -71,22 +107,72 @@ export async function createCashSaleService(cashierId, payload = {}) {
   if (cashReceived < subtotal)
     throw badRequest("cash_received is less than the total");
 
-  return createCashSale({
-    cashierId,
-    cartId: cart.id,
-    itemIds: ids,
-    saleNumber: saleNumber(),
-    items,
-    totals: {
-      subtotal,
-      discountTotal,
-      grandTotal: subtotal,
-      totalCost,
-      grossProfit: subtotal - totalCost,
-    },
-    cashReceived,
-    notes: payload.notes ? String(payload.notes).trim() : null,
+  try {
+    return await createCashSale({
+      cashierId,
+      cartId: cart.id,
+      itemIds: ids,
+      saleNumber: saleNumber(),
+      items,
+      totals: {
+        subtotal,
+        discountTotal,
+        grandTotal: subtotal,
+        totalCost,
+        grossProfit: subtotal - totalCost,
+      },
+      cashReceived,
+      notes: payload.notes ? String(payload.notes).trim() : null,
+      idempotencyKey: normalizedKey,
+      requestFingerprint,
+    });
+  } catch (error) {
+    if (error.code === "P2002") {
+      const existingSale = await findCashSaleByIdempotencyKey(normalizedKey);
+      if (existingSale?.requestFingerprint === requestFingerprint) return existingSale;
+      if (existingSale) {
+        throw conflict("Idempotency-Key was already used with a different request");
+      }
+    }
+    throw error;
+  }
+}
+
+function parseHistoryDate(value, fieldName, endOfDay = false) {
+  if (value === undefined) return undefined;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) throw badRequest(`${fieldName} must be a valid date`);
+  if (endOfDay) date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+export async function getCashSalesService(cashierId, filters = {}) {
+  const page = parsePositiveInt(filters.page ?? 1, "page");
+  const limit = parsePositiveInt(filters.limit ?? 20, "limit");
+  if (limit > 50) throw badRequest("limit must be less than or equal to 50");
+
+  const startDate = parseHistoryDate(filters.start_date, "start_date");
+  const endDate = parseHistoryDate(filters.end_date, "end_date", true);
+  if (startDate && endDate && startDate > endDate) {
+    throw badRequest("start_date cannot be after end_date");
+  }
+
+  const result = await findCashSalesByCashier(cashierId, {
+    startDate,
+    endDate,
+    skip: (page - 1) * limit,
+    take: limit,
   });
+
+  return {
+    data: result.sales,
+    meta: {
+      page,
+      limit,
+      total: result.total,
+      totalPages: Math.ceil(result.total / limit),
+    },
+  };
 }
 
 function escapeHtml(value) {

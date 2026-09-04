@@ -18,6 +18,23 @@ export async function findUserById(userId) {
   });
 }
 
+export async function getUserProfile(userId) {
+  return await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phoneNumber: true,
+      emailVerified: true,
+      phoneNumberVerified: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+}
+
 export async function createAccount({
   email,
   password,

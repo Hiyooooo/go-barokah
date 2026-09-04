@@ -11,12 +11,16 @@ export async function createCashSale({
   totals,
   cashReceived,
   notes,
+  idempotencyKey,
+  requestFingerprint,
 }) {
   return prisma.$transaction(async (tx) => {
     const sale = await tx.cashSale.create({
       data: {
         cashierId,
         saleNumber,
+        idempotencyKey,
+        requestFingerprint,
         paymentMethod: "CASH",
         subtotal: totals.subtotal,
         discountTotal: totals.discountTotal,
@@ -43,6 +47,47 @@ export async function createCashSale({
     await tx.cartItem.deleteMany({ where: { cartId, id: { in: itemIds } } });
     return sale;
   });
+}
+
+export async function findCashSaleByIdempotencyKey(idempotencyKey) {
+  return prisma.cashSale.findUnique({
+    where: { idempotencyKey },
+    include,
+  });
+}
+
+export async function findCashSalesByCashier(cashierId, filters = {}) {
+  const where = {
+    cashierId,
+    ...(filters.startDate || filters.endDate
+      ? {
+          createdAt: {
+            ...(filters.startDate && { gte: filters.startDate }),
+            ...(filters.endDate && { lte: filters.endDate }),
+          },
+        }
+      : {}),
+  };
+  const [sales, total] = await prisma.$transaction([
+    prisma.cashSale.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: filters.skip,
+      take: filters.take,
+      select: {
+        saleNumber: true,
+        paymentMethod: true,
+        subtotal: true,
+        discountTotal: true,
+        grandTotal: true,
+        cashReceived: true,
+        changeAmount: true,
+        createdAt: true,
+      },
+    }),
+    prisma.cashSale.count({ where }),
+  ]);
+  return { sales, total };
 }
 
 export async function getCashSaleAggregation(startDate, endDate) {

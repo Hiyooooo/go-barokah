@@ -20,7 +20,7 @@ tags:
   - name: Products
     description: Katalog produk dan upload gambar produk.
   - name: Categories
-    description: Master data kategori produk. Hanya admin atau owner.
+    description: Master data kategori produk. Read access tersedia untuk admin, owner, dan cashier; perubahan tetap dibatasi untuk admin atau owner.
   - name: Types
     description: Master data tipe produk. Hanya admin atau owner.
   - name: Cart
@@ -455,6 +455,26 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout dan cabut token
+      description: Mencabut JWT yang sedang digunakan sampai masa berlaku token berakhir. Client tetap harus menghapus token dari secure storage.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logout berhasil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Successfully logout
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/otp/email/request:
     post:
       tags:
@@ -575,12 +595,43 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/users/me:
+    get:
+      tags:
+        - Users
+      summary: Ambil profile pengguna yang sedang login
+      description: Mengambil profile terbaru dari database. Dapat digunakan oleh user, admin, owner, dan cashier.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile berhasil diambil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+              example:
+                message: Success get profile
+                data:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  name: Integration Cashier
+                  email: cashier@example.com
+                  role: cashier
+                  phoneNumber: "081234567890"
+                  emailVerified: true
+                  phoneNumberVerified: false
+                  createdAt: "2026-09-04T08:00:00.000Z"
+                  updatedAt: "2026-09-04T08:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/users:
     patch:
       tags:
         - Users
       summary: Update akun pengguna
-      description: Membutuhkan Bearer token dengan role user atau admin.
+      description: Membutuhkan Bearer token dengan role user, admin, owner, atau cashier. User hanya dapat mengubah profile miliknya sendiri.
       security:
         - bearerAuth: []
       requestBody:
@@ -818,8 +869,12 @@ paths:
       summary: Ambil produk dengan stok kritis
       description: |
         Mengambil produk aktif yang stoknya berada pada atau di bawah batas stok kritis
-        masing-masing produk (`stock <= critical_stock`). Hasil diurutkan berdasarkan
-        stok paling sedikit terlebih dahulu.
+         masing-masing produk (`stock <= critical_stock`). Hasil diurutkan berdasarkan
+         stok paling sedikit terlebih dahulu.
+         Endpoint ini hanya untuk monitoring admin dan owner. Cashier tidak perlu
+         mengakses endpoint ini karena transaksi cashier boleh menjual produk yang
+         sudah berada pada stok kritis. Cashier tetap dapat melihat stok melalui
+         endpoint daftar/detail produk.
       security:
         - bearerAuth: []
       responses:
@@ -944,6 +999,7 @@ paths:
       tags:
         - Categories
       summary: Ambil semua kategori
+      description: Dapat dibaca oleh admin, owner, atau cashier untuk membangun filter katalog. Cashier hanya memiliki akses baca.
       security:
         - bearerAuth: []
       responses:
@@ -994,6 +1050,7 @@ paths:
       tags:
         - Categories
       summary: Ambil kategori berdasarkan id
+      description: Dapat dibaca oleh admin, owner, atau cashier. Cashier hanya memiliki akses baca.
       security:
         - bearerAuth: []
       responses:
@@ -1261,8 +1318,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-         "404":
-           $ref: "#/components/responses/NotFound"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/cash-sales:
     post:
@@ -1275,8 +1332,14 @@ paths:
         Transaksi mengurangi stok aktual tanpa menerapkan batas `critical_stock`,
         menyimpan transaksi dan item, lalu menghapus item terjual dari cart.
         `cash_received` harus lebih besar atau sama dengan grand total.
+        Client wajib mengirim header `Idempotency-Key` yang unik untuk setiap
+        transaksi baru. Retry dengan key dan payload yang sama mengembalikan
+        transaksi sebelumnya tanpa mengurangi stok lagi. Key yang sama dengan
+        payload berbeda menghasilkan `409 Conflict`.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -1294,6 +1357,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CashSaleCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    get:
+      tags:
+        - Cash Sales
+      summary: Ambil history transaksi cashier
+      description: Mengambil daftar transaksi cash milik cashier yang sedang login, diurutkan dari yang terbaru. Detail item diambil melalui endpoint detail berdasarkan sale_number.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: History transaksi berhasil diambil.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashSaleListResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2227,6 +2337,15 @@ components:
         type: string
         minLength: 1
       example: SALE-20260903-100000-1234
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+      description: UUID atau key unik untuk satu transaksi baru. Gunakan key yang sama saat retry request yang sama.
     OrderId:
       name: id
       in: path
@@ -3052,6 +3171,41 @@ components:
           example: Success get cash sale
         data:
           $ref: "#/components/schemas/CashSaleReceipt"
+
+    CashSaleListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Success get cash sales
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashSaleHistoryItem"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CashSaleHistoryItem:
+      type: object
+      properties:
+        saleNumber:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [CASH]
+        subtotal:
+          type: number
+        discountTotal:
+          type: number
+        grandTotal:
+          type: number
+        cashReceived:
+          type: number
+        changeAmount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
 
     CashSaleReceipt:
       type: object

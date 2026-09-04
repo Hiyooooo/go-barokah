@@ -249,6 +249,8 @@ model CashSale {
   id            Int      @id @default(autoincrement())
   cashierId     String   @map("cashier_id") @db.Char(36)
   saleNumber    String   @unique @map("sale_number") @db.VarChar(100)
+  idempotencyKey String  @unique @map("idempotency_key") @db.VarChar(100)
+  requestFingerprint String @map("request_fingerprint") @db.Char(64)
   paymentMethod String   @default("CASH") @map("payment_method") @db.VarChar(30)
   subtotal      Float
   discountTotal Float    @default(0) @map("discount_total")

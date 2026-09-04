@@ -12,14 +12,14 @@ const router = express.Router();
 router.get(
   "/",
   authRequired,
-  authorization("admin", "owner"),
+  authorization("admin", "owner", "cashier"),
   getAllCategoryController,
 );
 
 router.get(
   "/:id",
   authRequired,
-  authorization("admin", "owner"),
+  authorization("admin", "owner", "cashier"),
   getCategoryByIdController,
 );
 

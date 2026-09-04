@@ -2,6 +2,8 @@ CREATE TABLE `cash_sales` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `cashier_id` CHAR(36) NOT NULL,
     `sale_number` VARCHAR(100) NOT NULL,
+    `idempotency_key` VARCHAR(100) NOT NULL,
+    `request_fingerprint` CHAR(64) NOT NULL,
     `payment_method` VARCHAR(30) NOT NULL DEFAULT 'CASH',
     `subtotal` DOUBLE NOT NULL,
     `discount_total` DOUBLE NOT NULL DEFAULT 0,
@@ -13,6 +15,7 @@ CREATE TABLE `cash_sales` (
     `notes` TEXT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     UNIQUE INDEX `cash_sales_sale_number_key`(`sale_number`),
+    UNIQUE INDEX `cash_sales_idempotency_key_key`(`idempotency_key`),
     INDEX `cash_sales_cashier_id_idx`(`cashier_id`),
     INDEX `cash_sales_created_at_idx`(`created_at`),
     PRIMARY KEY (`id`)
