@@ -679,6 +679,7 @@ paths:
       tags:
         - Addresses
       summary: Buat alamat baru
+      description: Koordinat alamat wajib berada maksimal 150 km dari lokasi toko. Alamat dengan jarak lebih dari 150 km akan ditolak.
       security:
         - bearerAuth: []
       requestBody:
@@ -736,6 +737,7 @@ paths:
       tags:
         - Addresses
       summary: Update alamat
+      description: Jika koordinat dikirim atau diubah, koordinat tersebut wajib berada maksimal 150 km dari lokasi toko.
       security:
         - bearerAuth: []
       requestBody:

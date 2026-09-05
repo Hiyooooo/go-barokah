@@ -13,7 +13,12 @@ import {
   notFound,
   parsePositiveInt,
 } from "../utils/index.js";
-import { normalizeAddressCoordinates } from "./shipping.service.js";
+import {
+  calculateDistanceKmFromCoordinates,
+  getStoreCoordinatesFromEnv,
+  normalizeAddressCoordinates,
+  resolveShippingRateByDistance,
+} from "./shipping.service.js";
 
 function normalizeBoolean(value) {
   if (typeof value === "boolean") return value;
@@ -41,6 +46,18 @@ function normalizeCourierNote(value) {
 
   const normalized = String(value).trim();
   return normalized || null;
+}
+
+function validateAddressDistance(coordinates) {
+  const storeCoordinates = getStoreCoordinatesFromEnv();
+  const distanceKm = calculateDistanceKmFromCoordinates({
+    originLatitude: storeCoordinates.latitude,
+    originLongitude: storeCoordinates.longitude,
+    destinationLatitude: coordinates.latitude,
+    destinationLongitude: coordinates.longitude,
+  });
+
+  resolveShippingRateByDistance(distanceKm);
 }
 
 export async function getAllAdressService(userId) {
@@ -86,6 +103,8 @@ export async function createAddressService(userId, payload) {
     throw badRequest("Invalid phone number format");
   }
 
+  validateAddressDistance(coordinates);
+
   const data = {
     userId,
     label,
@@ -126,6 +145,10 @@ export async function updateAddressService(id, userId, payload) {
 
   if (recipient_phone !== undefined && !isValidPhone(recipient_phone)) {
     throw badRequest("Invalid phone number format");
+  }
+
+  if (coordinates.latitude !== undefined) {
+    validateAddressDistance(coordinates);
   }
 
   const data = {
