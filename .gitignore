@@ -6,3 +6,4 @@ node_modules
 !/uploads/products/.gitkeep
 /graphify-out/*
 /test/*
+/docs/*

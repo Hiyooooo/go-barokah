@@ -1,6 +1,9 @@
 import prisma from "../config/prisma.js";
 
-const include = { items: { orderBy: { id: "asc" } } };
+const include = {
+  cashier: { select: { id: true, name: true } },
+  items: { orderBy: { id: "asc" } },
+};
 
 export async function createCashSale({
   cashierId,
@@ -21,6 +24,7 @@ export async function createCashSale({
         saleNumber,
         idempotencyKey,
         requestFingerprint,
+        status: "COMPLETED",
         paymentMethod: "CASH",
         subtotal: totals.subtotal,
         discountTotal: totals.discountTotal,
@@ -40,8 +44,22 @@ export async function createCashSale({
         where: { id: item.productId, stock: { gte: item.quantity } },
         data: { stock: { decrement: item.quantity } },
       });
-      if (result.count !== 1)
-        throw new Error(`Insufficient stock for product ${item.productName}`);
+      if (result.count !== 1) {
+        const current = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true },
+        });
+        const error = new Error(
+          `Insufficient stock for product ${item.productName}`,
+        );
+        error.stockDetails = {
+          product_id: item.productId,
+          product_name: item.productName,
+          requested_quantity: item.quantity,
+          available_quantity: current?.stock ?? 0,
+        };
+        throw error;
+      }
     }
 
     await tx.cartItem.deleteMany({ where: { cartId, id: { in: itemIds } } });
@@ -122,7 +140,7 @@ export async function findCashSaleByNumberAndCashier(saleNumber, cashierId) {
   return prisma.cashSale.findFirst({
     where: { saleNumber, cashierId },
     include: {
-      cashier: { select: { name: true } },
+      cashier: { select: { id: true, name: true } },
       items: { orderBy: { id: "asc" } },
     },
   });

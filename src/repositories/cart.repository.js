@@ -43,6 +43,13 @@ export async function findCartItem(cartId, productId) {
   });
 }
 
+export async function findCartItemsByIds(ids) {
+  return await prisma.cartItem.findMany({
+    where: { id: { in: ids } },
+    select: { id: true },
+  });
+}
+
 export async function createCartItem(data) {
   return await prisma.cartItem.create({
     data: {

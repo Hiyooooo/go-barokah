@@ -1367,6 +1367,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
     get:
       tags:
@@ -2471,6 +2473,15 @@ components:
       properties:
         message:
           type: string
+        code:
+          type: string
+          nullable: true
+        details:
+          nullable: true
+          oneOf:
+            - type: object
+            - type: array
+            - type: string
         retry_after_seconds:
           type: integer
           minimum: 1
@@ -3163,7 +3174,49 @@ components:
           type: string
           example: Success create cash sale
         data:
-          $ref: "#/components/schemas/CashSaleDatabaseRecord"
+          $ref: "#/components/schemas/CashSaleReceipt"
+
+    CashSaleCreateResult:
+      type: object
+      required:
+        - status
+        - sale_number
+        - transaction_date
+        - payment_method
+        - grand_total
+        - cash_received
+        - change_amount
+      properties:
+        status:
+          type: string
+          enum: [COMPLETED]
+        sale_number:
+          type: string
+        transaction_date:
+          type: string
+          format: date-time
+        payment_method:
+          type: string
+          enum: [cash]
+        grand_total:
+          type: number
+        cash_received:
+          type: number
+        change_amount:
+          type: number
+        cashier:
+          $ref: "#/components/schemas/CashSaleCashier"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashSaleReceiptItem"
+        subtotal:
+          type: number
+        total_discount:
+          type: number
+        notes:
+          type: string
+          nullable: true
 
     CashSaleDetailResponse:
       type: object
@@ -3190,43 +3243,48 @@ components:
     CashSaleHistoryItem:
       type: object
       properties:
-        saleNumber:
+        sale_number:
           type: string
-        paymentMethod:
-          type: string
-          enum: [CASH]
-        subtotal:
-          type: number
-        discountTotal:
-          type: number
-        grandTotal:
-          type: number
-        cashReceived:
-          type: number
-        changeAmount:
-          type: number
-        createdAt:
+        transaction_date:
           type: string
           format: date-time
+        payment_method:
+          type: string
+          enum: [cash]
+        grand_total:
+          type: number
 
     CashSaleReceipt:
       type: object
       description: Data receipt yang digunakan Flutter untuk preview dan print struk.
+      required:
+        - status
+        - sale_number
+        - transaction_date
+        - cashier
+        - payment_method
+        - items
+        - subtotal
+        - total_discount
+        - grand_total
+        - cash_received
+        - change_amount
+        - notes
       properties:
+        status:
+          type: string
+          enum: [COMPLETED]
         sale_number:
           type: string
           example: SALE-20260903-100000-1234
-        created_at:
+        transaction_date:
           type: string
           format: date-time
         cashier:
-          type: object
-          properties:
-            name:
-              type: string
+          $ref: "#/components/schemas/CashSaleCashier"
         payment_method:
           type: string
-          enum: [CASH]
+          enum: [cash]
         items:
           type: array
           items:
@@ -3234,7 +3292,7 @@ components:
         subtotal:
           type: number
           format: float
-        discount_total:
+        total_discount:
           type: number
           format: float
         grand_total:
@@ -3264,7 +3322,7 @@ components:
         unit_price:
           type: number
           format: float
-        discount_amount:
+        discount:
           type: integer
           minimum: 0
           maximum: 100
@@ -3274,6 +3332,16 @@ components:
         subtotal:
           type: number
           format: float
+
+    CashSaleCashier:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
 
     CashSaleDatabaseRecord:
       type: object

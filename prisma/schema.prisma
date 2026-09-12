@@ -251,6 +251,7 @@ model CashSale {
   saleNumber    String   @unique @map("sale_number") @db.VarChar(100)
   idempotencyKey String  @unique @map("idempotency_key") @db.VarChar(100)
   requestFingerprint String @map("request_fingerprint") @db.Char(64)
+  status        String   @default("COMPLETED") @db.VarChar(30)
   paymentMethod String   @default("CASH") @map("payment_method") @db.VarChar(30)
   subtotal      Float
   discountTotal Float    @default(0) @map("discount_total")

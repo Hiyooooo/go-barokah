@@ -9,6 +9,8 @@ export function errorHandler(err, req, res, next) {
 
   res.status(status).json({
     message,
+    ...(err.code && { code: err.code }),
+    ...(err.details && { details: err.details }),
     ...(status === 429 &&
       err.details?.retry_after_seconds && {
         retry_after_seconds: err.details.retry_after_seconds,

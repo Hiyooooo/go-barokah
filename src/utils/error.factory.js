@@ -8,6 +8,10 @@ export function badRequest(message = "Bad request", options = {}) {
   return createHttpError(400, message, options);
 }
 
+export function cashSaleError(message, code, details, statusCode = 400) {
+  return createHttpError(statusCode, message, { code, details });
+}
+
 export function unauthorized(message = "Unauthorized", options = {}) {
   return createHttpError(401, message, options);
 }
