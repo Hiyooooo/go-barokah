@@ -2135,6 +2135,42 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/owner/employee/cashiers:
+    get:
+      tags:
+        - Employee
+      summary: Ambil semua akun cashier
+      description: |
+        Mengambil daftar semua akun dengan role `cashier`.
+        Hanya dapat diakses oleh owner.
+        Response hanya menampilkan `name`, `email`, dan `role`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Daftar akun cashier berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AccountSummary"
+              example:
+                message: Success get all cashier accounts
+                data:
+                  - name: Siti Kasir
+                    email: cashier@example.com
+                    role: cashier
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/owner/employee/promote:
     patch:
       tags:

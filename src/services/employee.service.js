@@ -1,6 +1,7 @@
 import {
   findEmail,
   getAllAdminAccount,
+  getAllCashierAccount,
   getAllUserAccount,
   isAdminRole,
   removeAdmin,
@@ -16,6 +17,10 @@ export async function getAllUserAccountService() {
 
 export async function getAllAdminAccountService() {
   return await getAllAdminAccount();
+}
+
+export async function getAllCashierAccountService() {
+  return await getAllCashierAccount();
 }
 
 export async function setAdminService(email) {

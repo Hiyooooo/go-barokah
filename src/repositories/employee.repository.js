@@ -28,6 +28,17 @@ export async function getAllAdminAccount() {
   });
 }
 
+export async function getAllCashierAccount() {
+  return await prisma.user.findMany({
+    where: { role: "cashier" },
+    select: {
+      name: true,
+      email: true,
+      role: true,
+    },
+  });
+}
+
 export async function isAdminRole(email) {
   const user = await prisma.user.findFirst({
     where: {

@@ -1,5 +1,6 @@
 import {
   getAllAdminAccountService,
+  getAllCashierAccountService,
   getAllUserAccountService,
   removeAdminService,
   setAdminService,
@@ -24,6 +25,18 @@ export async function getAllAdminAccountController(req, res, next) {
     return res.status(200).json({
       message: "Success get all admin accounts",
       data: allAdminAccount,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAllCashierAccountController(req, res, next) {
+  try {
+    const allCashierAccount = await getAllCashierAccountService();
+    return res.status(200).json({
+      message: "Success get all cashier accounts",
+      data: allCashierAccount,
     });
   } catch (error) {
     next(error);

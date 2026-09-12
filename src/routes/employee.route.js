@@ -2,6 +2,7 @@ import express from "express";
 import { authorization, authRequired } from "../middlewares/auth.middleware.js";
 import {
   getAllAdminAccountController,
+  getAllCashierAccountController,
   getAllUserAccountController,
   removeAdminController,
   setAdminController,
@@ -16,6 +17,8 @@ router.use(authorization("owner"));
 router.get("/users", getAllUserAccountController);
 
 router.get("/admins", getAllAdminAccountController);
+
+router.get("/cashiers", getAllCashierAccountController);
 
 router.patch("/promote", setAdminController);
 router.patch("/cashier", setCashierController);
