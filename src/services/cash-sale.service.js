@@ -14,15 +14,17 @@ import {
   notFound,
   parsePositiveInt,
 } from "../utils/index.js";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+
+const CASH_SALE_STATUS = "COMPLETED";
 
 function saleNumber() {
-  return `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Date.now().toString().slice(-4)}`;
+  return `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
 function buildReceiptResponse(sale) {
   return {
-    status: sale.status,
+    status: sale.status ?? CASH_SALE_STATUS,
     sale_number: sale.saleNumber,
     transaction_date: sale.createdAt,
     payment_method: String(sale.paymentMethod).toLowerCase(),
@@ -260,6 +262,7 @@ export async function createCashSaleService(
       );
     }
     if (error.statusCode) throw error;
+    console.error("[CashSale] Transaction failed:", error);
     throw cashSaleError(
       "Cash sale could not be processed.",
       "CASH_SALE_FAILED",
