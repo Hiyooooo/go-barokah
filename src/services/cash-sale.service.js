@@ -266,7 +266,11 @@ export async function createCashSaleService(
     throw cashSaleError(
       "Cash sale could not be processed.",
       "CASH_SALE_FAILED",
-      null,
+      {
+        error: error.message || "Unknown error",
+        error_name: error.name || "Error",
+        database_code: error.code || null,
+      },
       500,
     );
   }
