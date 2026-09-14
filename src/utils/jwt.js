@@ -19,6 +19,7 @@ function revokedTokenKey(token) {
 }
 
 export async function revokeToken(token) {
+    if (String(process.env.REDIS_ENABLED ?? "false").trim().toLowerCase() !== "true") return;
     const decoded = jwt.decode(token);
     const expiresIn = decoded?.exp ? Math.max(1, decoded.exp - Math.floor(Date.now() / 1000)) : 86400;
     const redis = await getRedisClient();
@@ -26,6 +27,7 @@ export async function revokeToken(token) {
 }
 
 export async function isTokenRevoked(token) {
+    if (String(process.env.REDIS_ENABLED ?? "false").trim().toLowerCase() !== "true") return false;
     const redis = await getRedisClient();
     return (await redis.exists(revokedTokenKey(token))) === 1;
 }

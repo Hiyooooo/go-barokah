@@ -48,6 +48,7 @@ function buildKeys(type, identifier) {
 }
 
 export async function consumeOtpRequestLimit(type, identifier) {
+  if (String(process.env.REDIS_ENABLED ?? "false").trim().toLowerCase() !== "true") return;
   const keys = buildKeys(type, identifier);
 
   let result;
