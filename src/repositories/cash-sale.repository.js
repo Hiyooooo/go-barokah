@@ -24,7 +24,6 @@ export async function createCashSale({
         saleNumber,
         idempotencyKey,
         requestFingerprint,
-        status: "COMPLETED",
         paymentMethod: "CASH",
         subtotal: totals.subtotal,
         discountTotal: totals.discountTotal,
