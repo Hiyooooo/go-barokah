@@ -261,6 +261,9 @@ model CashSale {
   totalCost     Float    @default(0) @map("total_cost")
   grossProfit   Float    @default(0) @map("gross_profit")
   notes         String?  @db.Text
+  snapToken     String?  @map("snap_token") @db.Text
+  paymentUrl    String?  @map("payment_url") @db.VarChar(500)
+  midtransOrderId String? @unique @map("midtrans_order_id") @db.VarChar(150)
   createdAt     DateTime @default(now()) @map("created_at")
 
   cashier User          @relation(fields: [cashierId], references: [id], onDelete: Restrict)

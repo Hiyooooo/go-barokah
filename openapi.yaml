@@ -1327,13 +1327,15 @@ paths:
     post:
       tags:
         - Cash Sales
-      summary: Buat transaksi penjualan cash
+      summary: Buat transaksi penjualan kasir (Cash, QRIS, VA)
       description: |
-        Membuat transaksi offline dari cart item yang dipilih oleh cashier.
+        Membuat transaksi offline/kasir dari cart item yang dipilih oleh cashier.
+        Mendukung metode pembayaran tunai (CASH) dan non-tunai (QRIS, VA via Midtrans Snap).
         Harga, diskon, total, dan stok selalu divalidasi ulang oleh backend.
         Transaksi mengurangi stok aktual tanpa menerapkan batas `critical_stock`,
         menyimpan transaksi dan item, lalu menghapus item terjual dari cart.
-        `cash_received` harus lebih besar atau sama dengan grand total.
+        Untuk metode CASH, `cash_received` wajib diisi dan harus lebih besar atau sama dengan grand total.
+        Untuk non-tunai (QRIS/VA), status awal adalah PENDING dan mengembalikan snap_token serta payment_url.
         Client wajib mengirim header `Idempotency-Key` yang unik untuk setiap
         transaksi baru. Retry dengan key dan payload yang sama mengembalikan
         transaksi sebelumnya tanpa mengurangi stok lagi. Key yang sama dengan
@@ -1350,11 +1352,12 @@ paths:
               $ref: "#/components/schemas/CashSaleCreateRequest"
             example:
               cart_item_ids: [12, 15]
-              cash_received: 100000
-              notes: Pembelian langsung di toko
+              payment_method: QRIS
+              cash_received: 0
+              notes: Pembelian di kasir
       responses:
         "201":
-          description: Transaksi cash berhasil dibuat.
+          description: Transaksi berhasil dibuat.
           content:
             application/json:
               schema:
@@ -1432,6 +1435,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CashSaleDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/cash-sales/{saleNumber}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/CashSaleNumber"
+    post:
+      tags:
+        - Cash Sales
+      summary: Batalkan transaksi kasir berstatus PENDING
+      description: Membatalkan transaksi kasir non-tunai yang masih berstatus PENDING (misal jika pembeli membatalkan pesanan atau ganti ke tunai). Mengembalikan stok produk ke gudang dan membatalkan transaksi di Midtrans.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Transaksi berhasil dibatalkan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashSaleDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2537,7 +2566,7 @@ components:
           example: budi@example.com
         role:
           type: string
-           enum: [user, admin, owner, cashier]
+          enum: [user, admin, owner, cashier]
           example: user
 
     EmployeeEmailRequest:
@@ -2566,7 +2595,7 @@ components:
           example: budi@example.com
         role:
           type: string
-           enum: [user, admin, owner, cashier]
+          enum: [user, admin, owner, cashier]
           example: admin
         phoneNumber:
           type: string
@@ -3189,11 +3218,16 @@ components:
             type: integer
             minimum: 1
           description: ID cart item yang akan dijual.
+        payment_method:
+          type: string
+          enum: [CASH, QRIS, VA]
+          default: CASH
+          description: Metode pembayaran yang dipilih di kasir.
         cash_received:
           type: number
           format: float
           minimum: 0
-          description: Nominal uang cash yang diterima dari pembeli.
+          description: Nominal uang cash yang diterima dari pembeli (wajib jika payment_method CASH).
           example: 100000
         notes:
           type: string
@@ -3201,14 +3235,13 @@ components:
           description: Catatan opsional transaksi.
       required:
         - cart_item_ids
-        - cash_received
 
     CashSaleCreateResponse:
       type: object
       properties:
         message:
           type: string
-          example: Success create cash sale
+          example: Transaksi berhasil dibuat, silakan selesaikan pembayaran
         data:
           $ref: "#/components/schemas/CashSaleReceipt"
 
@@ -3225,7 +3258,7 @@ components:
       properties:
         status:
           type: string
-          enum: [COMPLETED]
+          enum: [PENDING, COMPLETED, FAILED, EXPIRED, CANCELLED]
         sale_number:
           type: string
         transaction_date:
@@ -3233,13 +3266,19 @@ components:
           format: date-time
         payment_method:
           type: string
-          enum: [cash]
+          enum: [CASH, QRIS, VA]
         grand_total:
           type: number
         cash_received:
           type: number
         change_amount:
           type: number
+        snap_token:
+          type: string
+          nullable: true
+        payment_url:
+          type: string
+          nullable: true
         cashier:
           $ref: "#/components/schemas/CashSaleCashier"
         items:
@@ -3286,7 +3325,7 @@ components:
           format: date-time
         payment_method:
           type: string
-          enum: [cash]
+          enum: [CASH, QRIS, VA]
         grand_total:
           type: number
 
@@ -3305,14 +3344,13 @@ components:
         - grand_total
         - cash_received
         - change_amount
-        - notes
       properties:
         status:
           type: string
-          enum: [COMPLETED]
+          enum: [PENDING, COMPLETED, FAILED, EXPIRED, CANCELLED]
         sale_number:
           type: string
-          example: SALE-20260903-100000-1234
+          example: SALE-20260924-100000-1234
         transaction_date:
           type: string
           format: date-time
@@ -3320,7 +3358,7 @@ components:
           $ref: "#/components/schemas/CashSaleCashier"
         payment_method:
           type: string
-          enum: [cash]
+          enum: [CASH, QRIS, VA]
         items:
           type: array
           items:
@@ -3340,6 +3378,12 @@ components:
         change_amount:
           type: number
           format: float
+        snap_token:
+          type: string
+          nullable: true
+        payment_url:
+          type: string
+          nullable: true
         notes:
           type: string
           nullable: true

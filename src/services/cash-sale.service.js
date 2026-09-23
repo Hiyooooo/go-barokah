@@ -3,11 +3,14 @@ import {
   findCartItemsByIds,
 } from "../repositories/cart.repository.js";
 import {
+  cancelCashSaleAndRestoreStock,
   createCashSale,
   findCashSaleByIdempotencyKey,
   findCashSaleByNumberAndCashier,
   findCashSalesByCashier,
 } from "../repositories/cash-sale.repository.js";
+import { findUserById } from "../repositories/user.repository.js";
+import { cancelMidtransTransaction, createSnapToken } from "../utils/midtrans.js";
 import {
   badRequest,
   cashSaleError,
@@ -19,7 +22,7 @@ import { createHash, randomUUID } from "node:crypto";
 const CASH_SALE_STATUS = "COMPLETED";
 
 function saleNumber() {
-  return `INV-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
+  return `SALE-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
 function buildReceiptResponse(sale) {
@@ -27,10 +30,14 @@ function buildReceiptResponse(sale) {
     status: sale.status ?? CASH_SALE_STATUS,
     sale_number: sale.saleNumber,
     transaction_date: sale.createdAt,
-    payment_method: String(sale.paymentMethod).toLowerCase(),
+    payment_method: sale.paymentMethod,
+    subtotal: sale.subtotal,
+    total_discount: sale.discountTotal,
     grand_total: sale.grandTotal,
     cash_received: sale.cashReceived,
     change_amount: sale.changeAmount,
+    snap_token: sale.snapToken ?? null,
+    payment_url: sale.paymentUrl ?? null,
     cashier: {
       id: sale.cashier.id,
       name: sale.cashier.name,
@@ -41,10 +48,9 @@ function buildReceiptResponse(sale) {
       quantity: item.quantity,
       unit_price: item.unitPrice,
       discount: item.discountAmount,
+      final_unit_price: item.finalUnitPrice,
       subtotal: item.subtotal,
     })),
-    subtotal: sale.subtotal,
-    total_discount: sale.discountTotal,
     notes: sale.notes,
   };
 }
@@ -83,11 +89,52 @@ export async function createCashSaleService(
     );
   }
 
+  const rawPaymentMethod = payload.payment_method
+    ? String(payload.payment_method).trim().toUpperCase()
+    : "CASH";
+
+  if (!["CASH", "QRIS", "VA"].includes(rawPaymentMethod)) {
+    throw cashSaleError(
+      "payment_method must be one of CASH, QRIS, or VA",
+      "INVALID_PAYMENT_METHOD",
+      null,
+    );
+  }
+
+  const isCash = rawPaymentMethod === "CASH";
+
+  let cashReceived = 0;
+  if (isCash) {
+    if (payload.cash_received === undefined || payload.cash_received === null || payload.cash_received === "") {
+      throw cashSaleError(
+        "cash_received is required for CASH payment method",
+        "INVALID_CASH_RECEIVED",
+        null,
+      );
+    }
+    cashReceived = Number(payload.cash_received);
+    if (!Number.isFinite(cashReceived) || cashReceived < 0) {
+      throw cashSaleError(
+        "cash_received must be a valid non-negative number",
+        "INVALID_CASH_RECEIVED",
+        null,
+      );
+    }
+  } else {
+    cashReceived = payload.cash_received !== undefined && payload.cash_received !== null && payload.cash_received !== ""
+      ? Number(payload.cash_received)
+      : 0;
+    if (!Number.isFinite(cashReceived) || cashReceived < 0) {
+      cashReceived = 0;
+    }
+  }
+
   const requestFingerprint = createHash("sha256")
     .update(
       JSON.stringify({
         cart_item_ids: ids,
-        cash_received: payload.cash_received,
+        payment_method: rawPaymentMethod,
+        cash_received: isCash ? cashReceived : 0,
         notes: payload.notes ? String(payload.notes).trim() : null,
       }),
     )
@@ -112,16 +159,6 @@ export async function createCashSaleService(
       );
     }
     return buildCashSaleResponse(previousSale);
-  }
-
-  const cashReceived = Number(payload.cash_received);
-
-  if (!Number.isFinite(cashReceived) || cashReceived < 0) {
-    throw cashSaleError(
-      "cash_received must be a valid non-negative number",
-      "INVALID_CASH_RECEIVED",
-      null,
-    );
   }
 
   const cart = await findCartByUserId(cashierId);
@@ -208,7 +245,7 @@ export async function createCashSaleService(
     0,
   );
   const totalCost = items.reduce((sum, item) => sum + item.totalCost, 0);
-  if (cashReceived < subtotal) {
+  if (isCash && cashReceived < subtotal) {
     throw cashSaleError(
       "Cash received is less than the transaction total.",
       "INSUFFICIENT_CASH",
@@ -220,12 +257,57 @@ export async function createCashSaleService(
     );
   }
 
+  const generatedSaleNumber = saleNumber();
+  let snapToken = null;
+  let paymentUrl = null;
+  let midtransOrderId = null;
+  const initialStatus = isCash ? "COMPLETED" : "PENDING";
+  const initialCashReceived = isCash ? cashReceived : 0;
+  const initialChangeAmount = isCash ? cashReceived - subtotal : 0;
+
+  if (!isCash) {
+    midtransOrderId = generatedSaleNumber;
+    const cashierUser = await findUserById(cashierId);
+    const midtransPayload = {
+      transaction_details: {
+        order_id: midtransOrderId,
+        gross_amount: Math.round(subtotal),
+      },
+      customer_details: {
+        first_name: cashierUser?.name || "Kasir",
+        email: cashierUser?.email || "cashier@example.com",
+        phone: cashierUser?.phoneNumber || "081234567890",
+      },
+      item_details: items.map((item) => ({
+        id: String(item.productId),
+        price: Math.round(item.finalUnitPrice),
+        quantity: item.quantity,
+        name: item.productName,
+      })),
+      enabled_payments: rawPaymentMethod === "QRIS" ? ["other_qris", "gopay", "shopeepay"] : ["bca_va", "bni_va", "bri_va", "mandiri_bill", "permata_va", "other_va", "echannel"],
+    };
+
+    try {
+      const snapResult = await createSnapToken(midtransPayload);
+      snapToken = snapResult.token;
+      paymentUrl = snapResult.redirect_url;
+    } catch (error) {
+      console.error("[Midtrans Snap CashSale] error:", error.message);
+      throw cashSaleError(
+        "Layanan pembayaran online sedang tidak tersedia, silakan coba beberapa saat lagi",
+        "MIDTRANS_ERROR",
+        { error: error.message },
+        500,
+      );
+    }
+  }
+
   try {
     const sale = await createCashSale({
       cashierId,
       cartId: cart.id,
       itemIds: ids,
-      saleNumber: saleNumber(),
+      saleNumber: generatedSaleNumber,
       items,
       totals: {
         subtotal,
@@ -234,7 +316,13 @@ export async function createCashSaleService(
         totalCost,
         grossProfit: subtotal - totalCost,
       },
-      cashReceived,
+      paymentMethod: rawPaymentMethod,
+      status: initialStatus,
+      cashReceived: initialCashReceived,
+      changeAmount: initialChangeAmount,
+      snapToken,
+      paymentUrl,
+      midtransOrderId,
       notes: payload.notes ? String(payload.notes).trim() : null,
       idempotencyKey: normalizedKey,
       requestFingerprint,
@@ -338,6 +426,9 @@ export async function getCashSaleReceiptService(cashierId, saleNumber) {
     cashierId,
   );
   if (!sale) throw notFound("Cash sale not found");
+  if (sale.status !== "COMPLETED") {
+    throw badRequest("Struk hanya dapat dicetak setelah pembayaran selesai");
+  }
 
   const rows = sale.items
     .map(
@@ -364,3 +455,25 @@ export async function getCashSaleService(cashierId, saleNumber) {
 
   return buildReceiptResponse(sale);
 }
+
+export async function cancelCashSaleService(cashierId, saleNumber) {
+  const sale = await findCashSaleByNumberAndCashier(
+    String(saleNumber),
+    cashierId,
+  );
+  if (!sale) throw notFound("Cash sale not found");
+
+  if (sale.status !== "PENDING") {
+    throw badRequest(
+      `Transaksi dengan status ${sale.status} tidak dapat dibatalkan`,
+    );
+  }
+
+  if (sale.midtransOrderId) {
+    await cancelMidtransTransaction(sale.midtransOrderId);
+  }
+
+  const cancelledSale = await cancelCashSaleAndRestoreStock(sale.id, "CANCELLED");
+  return buildReceiptResponse(cancelledSale);
+}
+

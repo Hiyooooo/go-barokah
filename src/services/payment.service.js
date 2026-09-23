@@ -7,6 +7,11 @@ import {
   cancelOrderAndRestoreStock,
 } from "../repositories/order.repository.js";
 import {
+  findCashSaleByMidtransOrderId,
+  updateCashSaleStatus,
+  cancelCashSaleAndRestoreStock,
+} from "../repositories/cash-sale.repository.js";
+import {
   createSnapToken,
   verifyMidtransSignature,
   isSnapTokenExpired,
@@ -146,7 +151,44 @@ export async function handleMidtransNotificationService(payload) {
 
   const order = await findOrderByMidtransOrderId(order_id);
   if (!order) {
-    throw notFound("Order not found");
+    const cashSale = await findCashSaleByMidtransOrderId(order_id);
+    if (!cashSale) {
+      throw notFound("Order not found");
+    }
+
+    if (cashSale.status === "COMPLETED") {
+      return;
+    }
+    if (
+      ["FAILED", "EXPIRED"].includes(cashSale.status) &&
+      ["expire", "deny", "cancel"].includes(transaction_status)
+    ) {
+      return;
+    }
+
+    if (
+      transaction_status === "settlement" ||
+      (transaction_status === "capture" && fraud_status === "accept")
+    ) {
+      await updateCashSaleStatus(cashSale.id, {
+        status: "COMPLETED",
+        cashReceived: cashSale.grandTotal,
+        changeAmount: 0,
+      });
+    } else if (
+      transaction_status === "pending" ||
+      (transaction_status === "capture" && fraud_status === "challenge")
+    ) {
+      console.log("[Midtrans] CashSale pending/challenge:", order_id);
+    } else if (
+      transaction_status === "deny" ||
+      transaction_status === "expire" ||
+      transaction_status === "cancel"
+    ) {
+      const finalStatus = transaction_status === "expire" ? "EXPIRED" : "FAILED";
+      await cancelCashSaleAndRestoreStock(cashSale.id, finalStatus);
+    }
+    return;
   }
 
   if (order.paymentStatus === "PAID") {

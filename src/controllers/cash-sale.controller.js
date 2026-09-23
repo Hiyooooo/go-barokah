@@ -3,6 +3,7 @@ import {
   getCashSalesService,
   getCashSaleReceiptService,
   getCashSaleService,
+  cancelCashSaleService,
 } from "../services/cash-sale.service.js";
 
 export async function createCashSaleController(req, res, next) {
@@ -12,7 +13,11 @@ export async function createCashSaleController(req, res, next) {
       req.body,
       req.get("Idempotency-Key"),
     );
-    res.status(201).json({ message: "Success create cash sale", data });
+    const message =
+      data.status === "PENDING"
+        ? "Transaksi berhasil dibuat, silakan selesaikan pembayaran"
+        : "Success create cash sale";
+    res.status(201).json({ message, data });
   } catch (error) {
     next(error);
   }
@@ -47,6 +52,15 @@ export async function getCashSaleController(req, res, next) {
   try {
     const data = await getCashSaleService(req.user.id, req.params.saleNumber);
     res.status(200).json({ message: "Success get cash sale", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function cancelCashSaleController(req, res, next) {
+  try {
+    const data = await cancelCashSaleService(req.user.id, req.params.saleNumber);
+    res.status(200).json({ message: "Transaksi berhasil dibatalkan", data });
   } catch (error) {
     next(error);
   }

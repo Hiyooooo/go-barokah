@@ -12,7 +12,13 @@ export async function createCashSale({
   saleNumber,
   items,
   totals,
+  paymentMethod = "CASH",
+  status = "COMPLETED",
   cashReceived,
+  changeAmount,
+  snapToken = null,
+  paymentUrl = null,
+  midtransOrderId = null,
   notes,
   idempotencyKey,
   requestFingerprint,
@@ -24,12 +30,16 @@ export async function createCashSale({
         saleNumber,
         idempotencyKey,
         requestFingerprint,
-        paymentMethod: "CASH",
+        status,
+        paymentMethod,
         subtotal: totals.subtotal,
         discountTotal: totals.discountTotal,
         grandTotal: totals.grandTotal,
         cashReceived,
-        changeAmount: cashReceived - totals.grandTotal,
+        changeAmount,
+        snapToken,
+        paymentUrl,
+        midtransOrderId,
         totalCost: totals.totalCost,
         grossProfit: totals.grossProfit,
         notes,
@@ -76,6 +86,7 @@ export async function findCashSaleByIdempotencyKey(idempotencyKey) {
 export async function findCashSalesByCashier(cashierId, filters = {}) {
   const where = {
     cashierId,
+    status: "COMPLETED",
     ...(filters.startDate || filters.endDate
       ? {
           createdAt: {
@@ -109,7 +120,7 @@ export async function findCashSalesByCashier(cashierId, filters = {}) {
 
 export async function getCashSaleAggregation(startDate, endDate) {
   return prisma.cashSale.aggregate({
-    where: { createdAt: { gte: startDate, lte: endDate } },
+    where: { status: "COMPLETED", createdAt: { gte: startDate, lte: endDate } },
     _sum: {
       grandTotal: true,
       subtotal: true,
@@ -124,7 +135,7 @@ export async function getCashSaleAggregation(startDate, endDate) {
 export async function getCashSalePerProduct(startDate, endDate) {
   return prisma.cashSaleItem.groupBy({
     by: ["productId", "productName"],
-    where: { cashSale: { createdAt: { gte: startDate, lte: endDate } } },
+    where: { cashSale: { status: "COMPLETED", createdAt: { gte: startDate, lte: endDate } } },
     _sum: {
       quantity: true,
       subtotal: true,
@@ -144,3 +155,50 @@ export async function findCashSaleByNumberAndCashier(saleNumber, cashierId) {
     },
   });
 }
+
+export async function findCashSaleByMidtransOrderId(midtransOrderId) {
+  return prisma.cashSale.findUnique({
+    where: { midtransOrderId },
+    include: {
+      cashier: { select: { id: true, name: true } },
+      items: { orderBy: { id: "asc" } },
+    },
+  });
+}
+
+export async function updateCashSaleStatus(id, { status, cashReceived, changeAmount }) {
+  const data = { status };
+  if (cashReceived !== undefined) data.cashReceived = cashReceived;
+  if (changeAmount !== undefined) data.changeAmount = changeAmount;
+  return prisma.cashSale.update({
+    where: { id },
+    data,
+    include,
+  });
+}
+
+export async function cancelCashSaleAndRestoreStock(id, status = "FAILED") {
+  return prisma.$transaction(async (tx) => {
+    const sale = await tx.cashSale.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!sale) return null;
+
+    for (const item of sale.items) {
+      if (!item.productId) continue;
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } },
+      });
+    }
+
+    return tx.cashSale.update({
+      where: { id },
+      data: { status },
+      include,
+    });
+  });
+}
+

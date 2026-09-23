@@ -4,6 +4,8 @@ import { badRequest } from "./index.js";
 
 const SNAP_SANDBOX_URL = "https://app.sandbox.midtrans.com/snap/v1/transactions";
 const SNAP_PRODUCTION_URL = "https://app.midtrans.com/snap/v1/transactions";
+const API_SANDBOX_URL = "https://api.sandbox.midtrans.com/v2";
+const API_PRODUCTION_URL = "https://api.midtrans.com/v2";
 
 export function getMidtransConfig() {
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -14,8 +16,9 @@ export function getMidtransConfig() {
 
   const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
   const snapBaseUrl = isProduction ? SNAP_PRODUCTION_URL : SNAP_SANDBOX_URL;
+  const apiBaseUrl = isProduction ? API_PRODUCTION_URL : API_SANDBOX_URL;
 
-  return { serverKey, isProduction, snapBaseUrl };
+  return { serverKey, isProduction, snapBaseUrl, apiBaseUrl };
 }
 
 export async function createSnapToken(payload) {
@@ -72,4 +75,30 @@ export function isSnapTokenExpired(snapTokenCreatedAt, expiryHours = 24) {
   const diffHours = diffMs / (1000 * 60 * 60);
 
   return diffHours >= expiryHours;
+}
+
+export async function cancelMidtransTransaction(orderId) {
+  const { serverKey, apiBaseUrl } = getMidtransConfig();
+  const base64Key = Buffer.from(serverKey + ":").toString("base64");
+  try {
+    const response = await fetch(`${apiBaseUrl}/${encodeURIComponent(orderId)}/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${base64Key}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.warn(`[Midtrans] cancelTransaction failed [${response.status}]: ${errBody}`);
+      return false;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.warn("[Midtrans] cancelTransaction network error:", error.message);
+    return false;
+  }
 }
