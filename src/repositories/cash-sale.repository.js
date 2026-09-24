@@ -91,7 +91,7 @@ export async function findCashSaleByIdempotencyKey(idempotencyKey) {
 
 export async function findCashSalesByCashier(cashierId, filters = {}) {
   const where = {
-    cashierId,
+    ...(cashierId ? { cashierId } : {}),
     status: "COMPLETED",
     ...(filters.startDate || filters.endDate
       ? {
@@ -116,7 +116,9 @@ export async function findCashSalesByCashier(cashierId, filters = {}) {
         grandTotal: true,
         cashReceived: true,
         changeAmount: true,
+        status: true,
         createdAt: true,
+        cashier: { select: { id: true, name: true } },
       },
     }),
     prisma.cashSale.count({ where }),

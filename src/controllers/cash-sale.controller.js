@@ -25,7 +25,11 @@ export async function createCashSaleController(req, res, next) {
 
 export async function getCashSalesController(req, res, next) {
   try {
-    const result = await getCashSalesService(req.user.id, req.query);
+    const result = await getCashSalesService(
+      req.user.id,
+      req.query,
+      req.user.role,
+    );
     res.status(200).json({
       message: "Success get cash sales",
       data: result.data,

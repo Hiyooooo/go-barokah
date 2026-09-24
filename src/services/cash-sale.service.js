@@ -403,7 +403,7 @@ function parseHistoryDate(value, fieldName, endOfDay = false) {
   return date;
 }
 
-export async function getCashSalesService(cashierId, filters = {}) {
+export async function getCashSalesService(cashierId, filters = {}, role = "cashier") {
   const page = parsePositiveInt(filters.page ?? 1, "page");
   const limit = parsePositiveInt(filters.limit ?? 20, "limit");
   if (limit > 50) throw badRequest("limit must be less than or equal to 50");
@@ -414,7 +414,11 @@ export async function getCashSalesService(cashierId, filters = {}) {
     throw badRequest("start_date cannot be after end_date");
   }
 
-  const result = await findCashSalesByCashier(cashierId, {
+  const isPrivileged = ["admin", "owner"].includes(
+    String(role ?? "cashier").toLowerCase(),
+  );
+
+  const result = await findCashSalesByCashier(isPrivileged ? null : cashierId, {
     startDate,
     endDate,
     skip: (page - 1) * limit,
@@ -427,6 +431,8 @@ export async function getCashSalesService(cashierId, filters = {}) {
       transaction_date: sale.createdAt,
       payment_method: String(sale.paymentMethod).toLowerCase(),
       grand_total: sale.grandTotal,
+      status: sale.status,
+      cashier: sale.cashier ?? null,
     })),
     meta: {
       page,

@@ -9,10 +9,22 @@ import {
 import { authRequired, authorization } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
-router.use(authRequired, authorization("cashier"));
-router.post("/", createCashSaleController);
-router.get("/", getCashSalesController);
-router.get("/:saleNumber", getCashSaleController);
-router.post("/:saleNumber/cancel", cancelCashSaleController);
-router.get("/:saleNumber/receipt", getCashSaleReceiptController);
+router.use(authRequired);
+router.post("/", authorization("cashier"), createCashSaleController);
+router.get(
+  "/",
+  authorization("cashier", "admin", "owner"),
+  getCashSalesController,
+);
+router.get("/:saleNumber", authorization("cashier"), getCashSaleController);
+router.post(
+  "/:saleNumber/cancel",
+  authorization("cashier"),
+  cancelCashSaleController,
+);
+router.get(
+  "/:saleNumber/receipt",
+  authorization("cashier"),
+  getCashSaleReceiptController,
+);
 export default router;
