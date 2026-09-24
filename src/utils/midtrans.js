@@ -49,6 +49,47 @@ export async function createSnapToken(payload) {
   return { token: data.token, redirect_url: data.redirect_url };
 }
 
+export async function chargeQrisDirect({ orderId, grossAmount }) {
+  const { serverKey, apiBaseUrl } = getMidtransConfig();
+  const base64Key = Buffer.from(serverKey + ":").toString("base64");
+  const response = await fetch(`${apiBaseUrl}/charge`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${base64Key}`,
+    },
+    body: JSON.stringify({
+      payment_type: "qris",
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: Math.round(grossAmount),
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    let errorBody = {};
+    try {
+      errorBody = await response.json();
+    } catch (_) {}
+    throw new Error(
+      `Midtrans API error [${response.status}]: ${
+        errorBody.status_message ?? errorBody.error_messages?.join(", ") ?? "Unknown error"
+      }`,
+    );
+  }
+
+  const data = await response.json();
+  const qrCodeUrl =
+    data.actions?.find((a) => a.name === "generate-qr-code")?.url ?? null;
+  return {
+    qr_string: data.qr_string ?? null,
+    qr_code_url: qrCodeUrl,
+    expiry_time: data.expiry_time ? new Date(data.expiry_time) : null,
+    transaction_id: data.transaction_id ?? null,
+  };
+}
+
 export function verifyMidtransSignature(orderId, statusCode, grossAmount, receivedSignature) {
   const { serverKey } = getMidtransConfig();
 

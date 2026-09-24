@@ -10,7 +10,7 @@ import {
   findCashSalesByCashier,
 } from "../repositories/cash-sale.repository.js";
 import { findUserById } from "../repositories/user.repository.js";
-import { cancelMidtransTransaction, createSnapToken } from "../utils/midtrans.js";
+import { cancelMidtransTransaction, chargeQrisDirect, createSnapToken } from "../utils/midtrans.js";
 import {
   badRequest,
   cashSaleError,
@@ -38,6 +38,9 @@ function buildReceiptResponse(sale) {
     change_amount: sale.changeAmount,
     snap_token: sale.snapToken ?? null,
     payment_url: sale.paymentUrl ?? null,
+    qr_string: sale.qrString ?? null,
+    qr_code_url: sale.qrCodeUrl ?? null,
+    expiry_time: sale.expiryTime ?? null,
     cashier: {
       id: sale.cashier.id,
       name: sale.cashier.name,
@@ -261,44 +264,68 @@ export async function createCashSaleService(
   let snapToken = null;
   let paymentUrl = null;
   let midtransOrderId = null;
+  let qrString = null;
+  let qrCodeUrl = null;
+  let expiryTime = null;
   const initialStatus = isCash ? "COMPLETED" : "PENDING";
   const initialCashReceived = isCash ? cashReceived : 0;
   const initialChangeAmount = isCash ? cashReceived - subtotal : 0;
 
   if (!isCash) {
     midtransOrderId = generatedSaleNumber;
-    const cashierUser = await findUserById(cashierId);
-    const midtransPayload = {
-      transaction_details: {
-        order_id: midtransOrderId,
-        gross_amount: Math.round(subtotal),
-      },
-      customer_details: {
-        first_name: cashierUser?.name || "Kasir",
-        email: cashierUser?.email || "cashier@example.com",
-        phone: cashierUser?.phoneNumber || "081234567890",
-      },
-      item_details: items.map((item) => ({
-        id: String(item.productId),
-        price: Math.round(item.finalUnitPrice),
-        quantity: item.quantity,
-        name: item.productName,
-      })),
-      enabled_payments: rawPaymentMethod === "QRIS" ? ["other_qris", "gopay", "shopeepay"] : ["bca_va", "bni_va", "bri_va", "mandiri_bill", "permata_va", "other_va", "echannel"],
-    };
 
-    try {
-      const snapResult = await createSnapToken(midtransPayload);
-      snapToken = snapResult.token;
-      paymentUrl = snapResult.redirect_url;
-    } catch (error) {
-      console.error("[Midtrans Snap CashSale] error:", error.message);
-      throw cashSaleError(
-        "Layanan pembayaran online sedang tidak tersedia, silakan coba beberapa saat lagi",
-        "MIDTRANS_ERROR",
-        { error: error.message },
-        500,
-      );
+    if (rawPaymentMethod === "QRIS") {
+      try {
+        const qrisResult = await chargeQrisDirect({
+          orderId: midtransOrderId,
+          grossAmount: subtotal,
+        });
+        qrString = qrisResult.qr_string;
+        qrCodeUrl = qrisResult.qr_code_url;
+        expiryTime = qrisResult.expiry_time;
+      } catch (error) {
+        console.error("[Midtrans QRIS CashSale] error:", error.message);
+        throw cashSaleError(
+          "Layanan pembayaran online sedang tidak tersedia, silakan coba beberapa saat lagi",
+          "MIDTRANS_ERROR",
+          { error: error.message },
+          500,
+        );
+      }
+    } else {
+      const cashierUser = await findUserById(cashierId);
+      const midtransPayload = {
+        transaction_details: {
+          order_id: midtransOrderId,
+          gross_amount: Math.round(subtotal),
+        },
+        customer_details: {
+          first_name: cashierUser?.name || "Kasir",
+          email: cashierUser?.email || "cashier@example.com",
+          phone: cashierUser?.phoneNumber || "081234567890",
+        },
+        item_details: items.map((item) => ({
+          id: String(item.productId),
+          price: Math.round(item.finalUnitPrice),
+          quantity: item.quantity,
+          name: item.productName,
+        })),
+        enabled_payments: ["bca_va", "bni_va", "bri_va", "mandiri_bill", "permata_va", "other_va", "echannel"],
+      };
+
+      try {
+        const snapResult = await createSnapToken(midtransPayload);
+        snapToken = snapResult.token;
+        paymentUrl = snapResult.redirect_url;
+      } catch (error) {
+        console.error("[Midtrans Snap CashSale] error:", error.message);
+        throw cashSaleError(
+          "Layanan pembayaran online sedang tidak tersedia, silakan coba beberapa saat lagi",
+          "MIDTRANS_ERROR",
+          { error: error.message },
+          500,
+        );
+      }
     }
   }
 
@@ -323,6 +350,9 @@ export async function createCashSaleService(
       snapToken,
       paymentUrl,
       midtransOrderId,
+      qrString,
+      qrCodeUrl,
+      expiryTime,
       notes: payload.notes ? String(payload.notes).trim() : null,
       idempotencyKey: normalizedKey,
       requestFingerprint,

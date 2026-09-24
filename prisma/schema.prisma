@@ -264,6 +264,9 @@ model CashSale {
   snapToken     String?  @map("snap_token") @db.Text
   paymentUrl    String?  @map("payment_url") @db.VarChar(500)
   midtransOrderId String? @unique @map("midtrans_order_id") @db.VarChar(150)
+  qrString      String?  @map("qr_string") @db.Text
+  qrCodeUrl     String?  @map("qr_code_url") @db.VarChar(500)
+  expiryTime    DateTime? @map("expiry_time")
   createdAt     DateTime @default(now()) @map("created_at")
 
   cashier User          @relation(fields: [cashierId], references: [id], onDelete: Restrict)

@@ -1330,12 +1330,14 @@ paths:
       summary: Buat transaksi penjualan kasir (Cash, QRIS, VA)
       description: |
         Membuat transaksi offline/kasir dari cart item yang dipilih oleh cashier.
-        Mendukung metode pembayaran tunai (CASH) dan non-tunai (QRIS, VA via Midtrans Snap).
+        Mendukung metode pembayaran tunai (CASH), QRIS direct tanpa webview (Core API /v2/charge),
+        dan VA via Midtrans Snap.
         Harga, diskon, total, dan stok selalu divalidasi ulang oleh backend.
         Transaksi mengurangi stok aktual tanpa menerapkan batas `critical_stock`,
         menyimpan transaksi dan item, lalu menghapus item terjual dari cart.
         Untuk metode CASH, `cash_received` wajib diisi dan harus lebih besar atau sama dengan grand total.
-        Untuk non-tunai (QRIS/VA), status awal adalah PENDING dan mengembalikan snap_token serta payment_url.
+        Untuk QRIS, status awal adalah PENDING dan mengembalikan qr_string, qr_code_url, dan expiry_time (snap_token/payment_url null, tanpa webview).
+        Untuk VA, status awal adalah PENDING dan mengembalikan snap_token serta payment_url.
         Client wajib mengirim header `Idempotency-Key` yang unik untuk setiap
         transaksi baru. Retry dengan key dan payload yang sama mengembalikan
         transaksi sebelumnya tanpa mengurangi stok lagi. Key yang sama dengan
@@ -1362,6 +1364,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CashSaleCreateResponse"
+              example:
+                message: Transaksi berhasil dibuat, silakan selesaikan pembayaran
+                data:
+                  status: PENDING
+                  sale_number: SALE-20260924-100000-1234
+                  transaction_date: 2026-09-24T03:00:00.000Z
+                  payment_method: QRIS
+                  subtotal: 100000
+                  total_discount: 0
+                  grand_total: 100000
+                  cash_received: 0
+                  change_amount: 0
+                  snap_token: null
+                  payment_url: null
+                  qr_string: 00020101021226660018MOCKQRISDIRECT
+                  qr_code_url: https://api.sandbox.midtrans.com/v2/qris/MOCK/qr-code
+                  expiry_time: 2026-09-24T03:15:00.000Z
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1425,7 +1444,7 @@ paths:
       tags:
         - Cash Sales
       summary: Ambil detail transaksi untuk struk Flutter
-      description: Mengambil data transaksi milik cashier yang sedang login. Gunakan response ini untuk preview atau membuat format struk di aplikasi Flutter.
+      description: Mengambil data transaksi milik cashier yang sedang login. Gunakan response ini untuk preview atau membuat format struk di aplikasi Flutter. Untuk QRIS direct, polling endpoint ini sampai status berubah dari PENDING menjadi COMPLETED (atau EXPIRED); render qr_string via qr_flutter tanpa webview.
       security:
         - bearerAuth: []
       responses:
@@ -3279,6 +3298,18 @@ components:
         payment_url:
           type: string
           nullable: true
+        qr_string:
+          type: string
+          nullable: true
+          description: EMVCo QR string untuk dirender langsung via qr_flutter (hanya QRIS).
+        qr_code_url:
+          type: string
+          nullable: true
+          description: URL gambar QR dari Midtrans (hanya QRIS).
+        expiry_time:
+          type: string
+          format: date-time
+          nullable: true
         cashier:
           $ref: "#/components/schemas/CashSaleCashier"
         items:
@@ -3383,6 +3414,16 @@ components:
           nullable: true
         payment_url:
           type: string
+          nullable: true
+        qr_string:
+          type: string
+          nullable: true
+        qr_code_url:
+          type: string
+          nullable: true
+        expiry_time:
+          type: string
+          format: date-time
           nullable: true
         notes:
           type: string
