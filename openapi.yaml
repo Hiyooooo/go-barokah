@@ -1443,8 +1443,8 @@ paths:
     get:
       tags:
         - Cash Sales
-      summary: Ambil detail transaksi untuk struk Flutter
-      description: Mengambil data transaksi milik cashier yang sedang login. Gunakan response ini untuk preview atau membuat format struk di aplikasi Flutter. Untuk QRIS direct, polling endpoint ini sampai status berubah dari PENDING menjadi COMPLETED (atau EXPIRED); render qr_string via qr_flutter tanpa webview.
+      summary: Ambil detail transaksi kasir
+      description: Mengambil data transaksi kasir berdasarkan sale_number. Role cashier hanya bisa melihat miliknya sendiri, sedangkan admin/owner bisa melihat semua kasir. Gunakan response ini untuk preview atau membuat format struk di aplikasi Flutter dan website. Untuk QRIS direct, polling endpoint ini sampai status berubah dari PENDING menjadi COMPLETED (atau EXPIRED); render qr_string via qr_flutter tanpa webview.
       security:
         - bearerAuth: []
       responses:

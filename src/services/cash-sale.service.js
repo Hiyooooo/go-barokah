@@ -6,6 +6,7 @@ import {
   cancelCashSaleAndRestoreStock,
   createCashSale,
   findCashSaleByIdempotencyKey,
+  findCashSaleByNumber,
   findCashSaleByNumberAndCashier,
   findCashSalesByCashier,
 } from "../repositories/cash-sale.repository.js";
@@ -482,11 +483,13 @@ export async function getCashSaleReceiptService(cashierId, saleNumber) {
 <p style="text-align:center;margin-top:24px">Terima kasih</p><button onclick="window.print()">Print</button></body></html>`;
 }
 
-export async function getCashSaleService(cashierId, saleNumber) {
-  const sale = await findCashSaleByNumberAndCashier(
-    String(saleNumber),
-    cashierId,
+export async function getCashSaleService(cashierId, saleNumber, role = "cashier") {
+  const isPrivileged = ["admin", "owner"].includes(
+    String(role ?? "cashier").toLowerCase(),
   );
+  const sale = isPrivileged
+    ? await findCashSaleByNumber(String(saleNumber))
+    : await findCashSaleByNumberAndCashier(String(saleNumber), cashierId);
   if (!sale) throw notFound("Cash sale not found");
 
   return buildReceiptResponse(sale);

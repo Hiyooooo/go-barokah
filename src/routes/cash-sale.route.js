@@ -16,7 +16,11 @@ router.get(
   authorization("cashier", "admin", "owner"),
   getCashSalesController,
 );
-router.get("/:saleNumber", authorization("cashier"), getCashSaleController);
+router.get(
+  "/:saleNumber",
+  authorization("cashier", "admin", "owner"),
+  getCashSaleController,
+);
 router.post(
   "/:saleNumber/cancel",
   authorization("cashier"),

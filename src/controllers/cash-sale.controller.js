@@ -54,7 +54,11 @@ export async function getCashSaleReceiptController(req, res, next) {
 
 export async function getCashSaleController(req, res, next) {
   try {
-    const data = await getCashSaleService(req.user.id, req.params.saleNumber);
+    const data = await getCashSaleService(
+      req.user.id,
+      req.params.saleNumber,
+      req.user.role,
+    );
     res.status(200).json({ message: "Success get cash sale", data });
   } catch (error) {
     next(error);

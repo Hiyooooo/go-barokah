@@ -164,6 +164,16 @@ export async function findCashSaleByNumberAndCashier(saleNumber, cashierId) {
   });
 }
 
+export async function findCashSaleByNumber(saleNumber) {
+  return prisma.cashSale.findFirst({
+    where: { saleNumber },
+    include: {
+      cashier: { select: { id: true, name: true } },
+      items: { orderBy: { id: "asc" } },
+    },
+  });
+}
+
 export async function findCashSaleByMidtransOrderId(midtransOrderId) {
   return prisma.cashSale.findUnique({
     where: { midtransOrderId },
